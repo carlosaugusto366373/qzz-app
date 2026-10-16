@@ -1,9 +1,12 @@
 package com.qzz.app
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -11,11 +14,14 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private val REQ_CAPTURE = 1001
+    private val REQ_NOTIF = 1002
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,7 +45,7 @@ class MainActivity : AppCompatActivity() {
 
                 @JavascriptInterface
                 fun startCapture() {
-                    runOnUiThread { requestCapturePermission() }
+                    runOnUiThread { requestNotifThenCapture() }
                 }
 
                 @JavascriptInterface
@@ -59,9 +65,38 @@ class MainActivity : AppCompatActivity() {
         setContentView(webView)
     }
 
-    private fun requestCapturePermission() {
+    private fun requestNotifThenCapture() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!granted) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    REQ_NOTIF
+                )
+                return
+            }
+        }
+        requestCapture()
+    }
+
+    private fun requestCapture() {
         val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         startActivityForResult(mgr.createScreenCaptureIntent(), REQ_CAPTURE)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_NOTIF) {
+            requestCapture()
+        }
     }
 
     @Deprecated("Deprecated in Java")
