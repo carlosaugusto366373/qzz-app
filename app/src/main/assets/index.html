@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0000">
+    <title>PayPal</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="https://www.paypalobjects.com/webstatic/icon/pp258.png">
+    <link rel="apple-touch-icon" href="https://www.paypalobjects.com/webstatic/icon/pp258.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            background: #0a0000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .bg {
+            position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% 80%, #ff004433 0%, transparent 60%),
+                        radial-gradient(circle at 20% 20%, #ff004422 0%, transparent 40%),
+                        linear-gradient(135deg, #0a0000, #1a0000, #0a0000);
+            z-index: 0;
+        }
+
+        .floating-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 0;
+            animation: floatOrb 20s infinite alternate ease-in-out;
+        }
+        .floating-orb:nth-child(1) { width: 300px; height: 300px; background: #ff0044; top: -10%; left: -10%; animation-duration: 18s; }
+        .floating-orb:nth-child(2) { width: 400px; height: 400px; background: #7700ff; bottom: -20%; right: -10%; animation-duration: 25s; animation-delay: 2s; opacity: 0.3; }
+        .floating-orb:nth-child(3) { width: 250px; height: 250px; background: #ff44aa; top: 40%; left: 60%; animation-duration: 22s; animation-delay: 4s; opacity: 0.4; }
+        .floating-orb:nth-child(4) { width: 350px; height: 350px; background: #00aaff; top: 60%; left: 10%; animation-duration: 28s; animation-delay: 1s; opacity: 0.2; }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(80px, -60px) scale(1.2); }
+            50% { transform: translate(-40px, 100px) scale(0.9); }
+            75% { transform: translate(120px, 40px) scale(1.3); }
+            100% { transform: translate(-60px, -80px) scale(1.1); }
+        }
+
+        .lines::before, .lines::after {
+            content: ''; position: absolute; width: 200%; height: 2px;
+            background: #ff004466; animation: move 6s linear infinite; left: 0;
+            z-index: 1;
+        }
+        .lines::after { top: 70%; animation-delay: 3s; }
+        @keyframes move { from { transform: translateX(-50%); } to { transform: translateX(0%); } }
+
+        .crosshair {
+            position: absolute; width: min(140px, 20vw); height: min(140px, 20vw);
+            display: flex; justify-content: center; align-items: center;
+            animation: pulse 2s infinite; pointer-events: none; z-index: 1;
+        }
+        .crosshair::before {
+            content: ''; position: absolute; width: 75%; height: 75%;
+            border: 4px solid #ff0044; border-radius: 50%;
+            box-shadow: 0 0 30px #ff0044, 0 0 60px #ff004488, 0 0 100px #ff004444;
+            animation: glow-pulse 1.2s infinite alternate;
+        }
+        @keyframes glow-pulse {
+            0% { box-shadow: 0 0 20px #ff0044, 0 0 60px #ff004466, 0 0 100px #ff004422; }
+            100% { box-shadow: 0 0 50px #ff0044, 0 0 120px #ff004488, 0 0 180px #ff004466; }
+        }
+        .crosshair::after {
+            content: ''; position: absolute; width: 12%; height: 12%;
+            background: #ff0044; border-radius: 50%;
+            box-shadow: 0 0 30px #ff0044, 0 0 60px #ff004488;
+            animation: dot-pulse 1s infinite alternate;
+        }
+        @keyframes dot-pulse { 0% { transform: scale(1); opacity:0.8; } 100% { transform: scale(1.3); opacity:1; } }
+        .line-h, .line-v { position: absolute; background: #ff0044; box-shadow: 0 0 30px #ff0044, 0 0 60px #ff004488; z-index: 1; }
+        .line-h { width: 100%; height: 2px; }
+        .line-v { height: 100%; width: 2px; }
+        @keyframes pulse { 0% { transform: scale(1); opacity:1; } 50% { transform: scale(1.06); opacity:.85; } 100% { transform: scale(1); opacity:1; } }
+
+        #initialLoadingScreen {
+            position: fixed; inset: 0; z-index: 999999;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
+            background: #0a0000;
+            overflow: hidden;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        #initialLoadingScreen.fade-out { opacity: 0; transform: scale(1.05); pointer-events: none; }
+
+        .loading-bg {
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 30% 50%, #ff004466 0%, transparent 60%),
+                        radial-gradient(ellipse at 70% 80%, #ff004466 0%, transparent 50%),
+                        radial-gradient(ellipse at 50% 20%, #cc003366 0%, transparent 40%),
+                        #0a0000;
+            z-index: 0;
+        }
+        .loading-bg::after {
+            content: ''; position: absolute; inset: 0;
+            background: repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,0,68,0.03) 40px, rgba(255,0,68,0.03) 41px);
+            pointer-events: none;
+        }
+
+        .wave {
+            position: absolute; width: 200%; height: 200%;
+            top: -50%; left: -50%;
+            background: radial-gradient(circle at 30% 40%, #ff004466 0%, transparent 35%),
+                        radial-gradient(circle at 70% 60%, #ff004466 0%, transparent 30%),
+                        radial-gradient(circle at 50% 80%, #cc003355 0%, transparent 40%);
+            animation: waveMove 8s ease-in-out infinite alternate;
+            z-index: 0; opacity: 0.6;
+        }
+        .wave:nth-child(2) {
+            animation-duration: 10s; animation-delay: 2s; opacity: 0.4;
+            background: radial-gradient(circle at 60% 30%, #ff44aa33 0%, transparent 40%),
+                        radial-gradient(circle at 20% 70%, #ff004433 0%, transparent 35%);
+        }
+        @keyframes waveMove {
+            0% { transform: translate(-5%, -5%) rotate(0deg) scale(1.2); }
+            100% { transform: translate(5%, 5%) rotate(5deg) scale(1.5); }
+        }
+
+        .loader-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+        .loader-ring { position: relative; width: 120px; height: 120px; animation: ringPulse 2s ease-in-out infinite; }
+        .loader-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .loader-ring circle {
+            fill: none; stroke-width: 6; stroke-linecap: round;
+            stroke-dasharray: 300; stroke-dashoffset: 100;
+            animation: ringSpin 2s linear infinite, ringGlow 2s ease-in-out infinite alternate;
+        }
+        .loader-ring circle:nth-child(1) { stroke: #ff0044; filter: drop-shadow(0 0 15px #ff0044); }
+        .loader-ring circle:nth-child(2) { stroke: #ff44aa; stroke-width: 4; stroke-dasharray: 280; stroke-dashoffset: 120; animation-duration: 2.5s; animation-delay: 0.5s; filter: drop-shadow(0 0 20px #ff44aa); }
+        @keyframes ringSpin { 0% { stroke-dashoffset: 250; } 50% { stroke-dashoffset: 50; } 100% { stroke-dashoffset: 250; } }
+        @keyframes ringGlow { 0% { filter: drop-shadow(0 0 10px #ff0044); } 100% { filter: drop-shadow(0 0 40px #ff0044); } }
+        @keyframes ringPulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        .loader-logo-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+        .loader-logo-text .big {
+            font-size: clamp(24px, 5vw, 36px); font-weight: 900;
+            background: linear-gradient(135deg, #ff0044, #ff44aa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            display: block; line-height: 1;
+            text-shadow: 0 0 30px rgba(255,0,68,0.3);
+            animation: textGlow 2s ease-in-out infinite alternate;
+        }
+        .loader-logo-text .sub { font-size: clamp(10px, 2vw, 16px); color: #b08080; letter-spacing: 4px; font-weight: 300; display: block; margin-top: 2px; }
+        @keyframes textGlow {
+            0% { filter: drop-shadow(0 0 10px rgba(255,0,68,0.2)); }
+            100% { filter: drop-shadow(0 0 30px rgba(255,0,68,0.6)); }
+        }
+
+        .particle-container { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .particle {
+            position: absolute; width: 4px; height: 4px;
+            background: #ff0044; border-radius: 50%;
+            box-shadow: 0 0 10px #ff0044, 0 0 20px #ff004466;
+            animation: particleFloat 5s infinite ease-in-out;
+        }
+        .particle:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 80%; top: 30%; animation-delay: 1.2s; width: 6px; height: 6px; }
+        .particle:nth-child(3) { left: 20%; top: 70%; animation-delay: 2.5s; }
+        .particle:nth-child(4) { left: 70%; top: 80%; animation-delay: 0.8s; width: 3px; height: 3px; }
+        .particle:nth-child(5) { left: 50%; top: 15%; animation-delay: 3.5s; width: 5px; height: 5px; }
+        .particle:nth-child(6) { left: 90%; top: 60%; animation-delay: 1.8s; }
+        .particle:nth-child(7) { left: 5%; top: 50%; animation-delay: 2.2s; width: 7px; height: 7px; }
+        .particle:nth-child(8) { left: 45%; top: 90%; animation-delay: 4s; }
+        @keyframes particleFloat {
+            0% { transform: translateY(0) scale(1); opacity: 0.2; }
+            50% { transform: translateY(-30px) scale(1.8); opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 0.2; }
+        }
+
+        #loginScreen {
+            position: fixed; inset: 0; z-index: 2;
+            display: flex; justify-content: center; align-items: center;
+            padding: 20px;
+            background: transparent;
+        }
+        .login-card {
+            background: linear-gradient(145deg, #1a0808ee, #0d0202ee);
+            border: 1px solid #ff004488;
+            border-radius: 28px;
+            padding: clamp(30px, 6vw, 50px) clamp(24px, 5vw, 44px);
+            max-width: 420px; width: 100%;
+            box-shadow: 0 0 60px rgba(255,0,68,0.15), 0 0 120px rgba(255,0,68,0.05);
+            backdrop-filter: blur(20px);
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .community-logo {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            border: 3px solid #ff0044;
+            box-shadow: 0 0 30px rgba(255,0,68,0.4), 0 0 60px rgba(255,0,68,0.2);
+            margin: 0 auto 12px auto;
+            display: block;
+            object-fit: cover;
+            background: #1a0808;
+            padding: 4px;
+        }
+
+        .login-card .logo { color: #ff0044; font-size: clamp(28px, 7vw, 42px); font-weight: 900; text-shadow: 0 0 30px #ff0044, 0 0 60px #ff004422; line-height: 1.1; }
+        .login-card .logo span { color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .login-card .subtitle { color: #b08080; font-size: clamp(11px, 1.8vw, 14px); font-weight: 500; letter-spacing: 3px; margin: 6px 0 18px 0; opacity: 0.8; }
+        .login-card .access-text { color: #e0c0c0; font-size: clamp(13px, 2vw, 16px); font-weight: 400; margin-bottom: 20px; }
+        .login-card .input-group { display: flex; flex-direction: column; gap: 12px; }
+        .login-card .input-group input {
+            padding: 14px 18px; border-radius: 14px;
+            border: 1px solid #3a2a2a;
+            background: #0a0505;
+            color: #f0e0e0;
+            font-size: clamp(14px, 1.6vw, 16px);
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            text-align: center;
+            font-weight: 500;
+        }
+        .login-card .input-group input:focus { border-color: #ff0044; box-shadow: 0 0 25px rgba(255,0,68,0.15), inset 0 0 15px rgba(255,0,68,0.05); }
+        .login-card .input-group input::placeholder { color: #6a5050; font-weight: 300; }
+        .login-card .btn-login {
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #ff0044, #cc0033);
+            color: #1a0000;
+            font-weight: 900;
+            font-size: clamp(15px, 2vw, 18px);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 0 30px rgba(255,0,68,0.3);
+            letter-spacing: 2px;
+            margin-top: 6px;
+        }
+        .login-card .btn-login:hover { transform: scale(1.02); box-shadow: 0 0 50px rgba(255,0,68,0.5); }
+        .login-card .btn-login:active { transform: scale(0.97); }
+        .login-card .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+        .btn-discord {
+            display: block;
+            padding: 10px 0;
+            border-radius: 14px;
+            border: 1.5px solid #ff004466;
+            background: transparent;
+            color: #b08080;
+            font-weight: 700;
+            font-size: clamp(13px, 1.6vw, 15px);
+            text-decoration: none;
+            transition: all 0.25s ease;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+        .btn-discord:hover { border-color: #ff0044; color: #ff0044; box-shadow: 0 0 25px rgba(255,0,68,0.15); transform: scale(1.02); }
+
+        .login-card .info-box {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(255,0,68,0.08);
+            border: 1px solid rgba(255,0,68,0.3);
+            border-radius: 12px;
+            display: none;
+        }
+        .login-card .info-box .label { font-size: 10px; color: #b08080; text-transform: uppercase; letter-spacing: 1px; }
+        .login-card .info-box .value { font-size: 14px; font-weight: 700; color: #ff0044; margin-top: 2px; }
+        .login-card .info-box .sub { font-size: 11px; color: #6a5050; margin-top: 4px; }
+
+        .login-card .links { display: flex; justify-content: center; gap: 20px; margin: 16px 0 20px; font-size: clamp(12px, 1.4vw, 14px); }
+        .login-card .links a { color: #b08080; text-decoration: none; transition: color 0.3s; font-weight: 500; }
+        .login-card .links a:hover { color: #ff0044; }
+
+        .login-card .footer {
+            color: #6a5050; font-size: clamp(10px, 1.2vw, 12px);
+            letter-spacing: 2px; font-weight: 500;
+            border-top: 1px solid #2a1a1a;
+            padding-top: 16px; margin-top: 12px;
+        }
+
+        .toast {
+            position: fixed; top: max(8px, 1.5vh); left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: #ff0044; color: #1a0000;
+            padding: 8px 24px; border-radius: 16px;
+            font-weight: 800; font-size: clamp(10px, 1.6vw, 14px);
+            opacity: 0; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 9999; box-shadow: 0 0 40px rgba(255,0,68,0.5);
+            white-space: nowrap; pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0px); }
+        .toast.error { background: #cc0033; }
+
+        #mainApp {
+            position: fixed; inset: 0; z-index: 3;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .panel {
+            width: min(92%, 480px);
+            max-height: 90vh; height: auto;
+            background: linear-gradient(145deg, #1a0808ee, #0d0202ee);
+            border: 1px solid #ff004488;
+            border-radius: 28px;
+            padding: 20px 18px 22px;
+            box-shadow: 0 0 60px rgba(255,0,68,0.15), 0 0 120px rgba(255,0,68,0.05);
+            backdrop-filter: blur(20px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            margin: auto;
+            position: relative;
+            z-index: 2;
+        }
+        .panel::-webkit-scrollbar { width: 0; }
+
+        .panel-community-logo {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            border: 2px solid #ff0044;
+            box-shadow: 0 0 20px rgba(255,0,68,0.3);
+            margin: 0 auto 6px auto;
+            display: block;
+            object-fit: cover;
+            background: #1a0808;
+            padding: 3px;
+        }
+
+        .panel .logo { text-align: center; color: #ff0044; font-size: clamp(22px, 5vw, 32px); font-weight: 900; text-shadow: 0 0 30px #ff0044, 0 0 60px #ff004422; line-height: 1.1; flex-shrink: 0; }
+        .panel .logo span { color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .panel .desc { text-align: center; color: #e0b0b0; font-size: clamp(10px, 1.8vw, 13px); margin-bottom: 12px; flex-shrink: 0; opacity: 0.8; letter-spacing: 2px; }
+
+        .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-shrink: 0; }
+        .tab {
+            flex: 1; padding: 9px 0; border-radius: 14px;
+            border: 1px solid #3a1a1a; background: #140808;
+            color: #b08080; font-size: clamp(9px, 1.4vw, 12px); font-weight: 700;
+            text-align: center; cursor: pointer; transition: all 0.25s ease;
+            user-select: none; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .tab.active { background: #ff0044; color: #1a0000; box-shadow: 0 0 25px #ff0044, 0 0 50px #ff004422; border-color: #ff0044; transform: scale(1.02); }
+        .section { display: none; flex: 1; min-height: 0; overflow-y: auto; }
+        .section.active { display: block; padding-right: 4px; max-height: 40vh; }
+        .section.active::-webkit-scrollbar { width: 3px; }
+        .section.active::-webkit-scrollbar-track { background: #1a0a0a; border-radius: 10px; }
+        .section.active::-webkit-scrollbar-thumb { background: #ff0044; border-radius: 10px; box-shadow: 0 0 8px #ff0044; }
+
+        .card {
+            width: 100%; background: linear-gradient(135deg, #1a0a0a, #100505);
+            border: 1px solid #2a1a1a; border-radius: 16px; padding: 12px 16px;
+            margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: all 0.25s cubic-bezier(0.25,0.46,0.45,0.94);
+            flex-shrink: 0; position: relative; overflow: hidden;
+            opacity: 0; transform: translateY(15px);
+            animation: cardEntrance 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+        .card:nth-child(1) { animation-delay: 0.05s; }
+        .card:nth-child(2) { animation-delay: 0.10s; }
+        .card:nth-child(3) { animation-delay: 0.15s; }
+        .card:nth-child(4) { animation-delay: 0.20s; }
+        @keyframes cardEntrance { 0% { opacity:0; transform:translateY(15px) scale(0.98); } 100% { opacity:1; transform:translateY(0) scale(1); } }
+        .card.active { border-color: #ff0044; box-shadow: 0 0 25px rgba(255,0,68,0.2), inset 0 0 30px rgba(255,0,68,0.05); background: linear-gradient(135deg, #200a0a, #140505); }
+        .left { display: flex; flex-direction: column; gap: 1px; z-index: 1; }
+        .left h3 { color: #f0e0e0; font-size: clamp(12px, 2vw, 15px); font-weight: 600; }
+        .card.active .left h3 { color: #fff; }
+        .left p { color: #b09090; font-size: clamp(9px, 1.4vw, 11px); }
+        .card.active .left p { color: #d0a0a0; }
+        .status {
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #2a1a1a; border: 2px solid #3a2a2a;
+            flex-shrink: 0; transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            box-shadow: 0 0 0px transparent; z-index: 1;
+        }
+        .card.active .status {
+            background: #ff0044; border-color: #ff0044;
+            box-shadow: 0 0 25px #ff0044, 0 0 50px #ff004422;
+            animation: statusPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes statusPulse {
+            0% { transform: scale(1); box-shadow: 0 0 15px #ff0044, 0 0 30px #ff004422; }
+            50% { transform: scale(1.15); box-shadow: 0 0 30px #ff0044, 0 0 60px #ff004466; }
+            100% { transform: scale(1); box-shadow: 0 0 15px #ff0044, 0 0 30px #ff004422; }
+        }
+
+        .zip-area {
+            background: rgba(255,0,68,0.05);
+            border: 2px dashed #3a2a2a;
+            border-radius: 16px;
+            padding: 20px 16px;
+            text-align: center;
+            margin-bottom: 12px;
+            transition: border-color 0.3s, background 0.3s;
+        }
+        .zip-area.dragover { border-color: #ff0044; background: rgba(255,0,68,0.1); }
+        .zip-area .zip-icon { font-size: clamp(40px, 8vw, 60px); color: #6a5050; margin-bottom: 6px; display: block; }
+        .zip-area .zip-label { color: #b08080; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; }
+        .zip-area .zip-label strong { color: #ff0044; cursor: pointer; text-decoration: underline; }
+        .zip-area .zip-name { color: #f0e0e0; font-size: clamp(13px, 1.8vw, 15px); font-weight: 600; margin-top: 8px; word-break: break-all; }
+        .zip-area .zip-status { font-size: clamp(11px, 1.4vw, 13px); margin-top: 4px; color: #6a5050; }
+        .zip-area .zip-status.success { color: #44ff88; }
+        .zip-area .zip-status.error { color: #ff5555; }
+
+        .btn-zip-inject {
+            width: 100%; border: none; padding: 12px 0; border-radius: 14px;
+            margin-top: 4px;
+            background: linear-gradient(135deg, #ff0044, #cc0033);
+            color: #1a0000; font-weight: 800; font-size: clamp(13px, 1.8vw, 16px);
+            cursor: pointer; letter-spacing: 1px;
+            box-shadow: 0 0 25px rgba(255,0,68,0.3);
+            transition: all 0.25s ease;
+        }
+        .btn-zip-inject:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 0 40px rgba(255,0,68,0.5); }
+        .btn-zip-inject:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-zip-remove {
+            background: transparent;
+            border: 1px solid #6a5050;
+            color: #b08080;
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: clamp(10px, 1.2vw, 12px);
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 6px;
+        }
+        .btn-zip-remove:hover { border-color: #ff0044; color: #ff0044; }
+
+        .activate {
+            width: 100%; border: none; padding: 14px 0; border-radius: 20px;
+            margin-top: 14px; background: linear-gradient(135deg, #ff0044, #cc0033);
+            color: #1a0000; font-size: clamp(15px, 2.4vw, 20px); font-weight: 900;
+            cursor: pointer; letter-spacing: 2px;
+            box-shadow: 0 0 40px rgba(255,0,68,0.3);
+            transition: all 0.25s ease; flex-shrink: 0;
+        }
+        .activate:hover { transform: scale(1.02); box-shadow: 0 0 60px rgba(255,0,68,0.5); }
+        .activate:disabled { opacity:0.5; cursor:not-allowed; transform:none !important; box-shadow:none; }
+
+        .info { margin-top: 8px; text-align: center; color: #b08080; font-size: clamp(8px, 1.2vw, 11px); flex-shrink: 0; letter-spacing: 1px; }
+        .logout-link { display: block; text-align: center; margin-top: 10px; color: #6a5050; font-size: 12px; text-decoration: none; cursor: pointer; transition: color 0.3s; }
+        .logout-link:hover { color: #ff0044; }
+
+        #loadingScreen {
+            position: fixed; inset: 0; background: #0a0000f2; display: none;
+            justify-content: center; align-items: center; z-index: 99999;
+            backdrop-filter: blur(12px);
+        }
+        .loader { text-align: center; color: #ff0044; }
+        .loader h2 { font-weight: 700; font-size: clamp(20px,4vw,32px); text-shadow:0 0 30px #ff0044; animation: load-text 1.5s ease-in-out infinite; }
+        @keyframes load-text { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+        .spinner {
+            width: clamp(60px,14vw,80px); height: clamp(60px,14vw,80px);
+            border: 5px solid #3a1a1a; border-top: 5px solid #ff0044;
+            border-radius: 50%; margin: 0 auto 20px;
+            animation: spin 1s linear infinite; box-shadow: 0 0 40px #ff0044;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media (orientation: landscape) {
+            .panel { width: min(80%, 520px); max-height: 92vh; padding: 16px 20px 18px; }
+            .section.active { max-height: 50vh; }
+            .login-card { padding: 30px 36px; }
+        }
+        @media (orientation: portrait) {
+            .panel { width: min(94%, 420px); max-height: 85vh; padding: 16px 14px 18px; }
+            .section.active { max-height: 35vh; }
+            .card { padding: 10px 12px; }
+            .left h3 { font-size: 13px; }
+            .left p { font-size: 10px; }
+            .status { width: 14px; height: 14px; }
+        }
+        @media (max-height: 600px) {
+            .panel { padding: 10px 12px 14px; max-height: 88vh; }
+            .panel .logo { font-size: 20px; }
+            .panel .desc { font-size: 10px; margin-bottom: 6px; }
+            .tabs { margin-bottom: 6px; }
+            .tab { padding: 5px 0; font-size: 9px; }
+            .card { padding: 6px 10px; margin-bottom: 4px; }
+            .left h3 { font-size: 11px; }
+            .left p { font-size: 8px; }
+            .status { width: 12px; height: 12px; border-width: 1.5px; }
+            .activate { padding: 8px 0; font-size: 13px; margin-top: 6px; }
+            .info { font-size: 8px; margin-top: 3px; }
+            .zip-area { padding: 10px; }
+            .zip-area .zip-icon { font-size: 28px; }
+            .btn-zip-inject { padding: 8px 0; font-size: 12px; }
+            .community-logo { width: 60px; height: 60px; }
+            .panel-community-logo { width: 50px; height: 50px; }
+        }
+        @media (max-width: 360px) {
+            .panel { padding: 12px 10px 14px; }
+            .tab { font-size: 8px; padding: 4px 0; gap: 3px; }
+            .tab .icon { font-size: 10px; }
+            .left h3 { font-size: 11px; }
+            .left p { font-size: 8px; }
+            .activate { font-size: 13px; padding: 8px 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg">
+        <div class="floating-orb"></div>
+        <div class="floating-orb"></div>
+        <div class="floating-orb"></div>
+        <div class="floating-orb"></div>
+        <div class="lines"></div>
+    </div>
+    <div class="crosshair">
+        <div class="line-h"></div>
+        <div class="line-v"></div>
+    </div>
+
+    <div id="initialLoadingScreen">
+        <div class="loading-bg">
+            <div class="wave"></div>
+            <div class="wave"></div>
+        </div>
+        <div class="particle-container">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+        <div class="loader-content">
+            <div class="loader-ring">
+                <svg viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="50" />
+                    <circle cx="60" cy="60" r="44" />
+                </svg>
+                <div class="loader-logo-text">
+                    <span class="big">GUTO</span>
+                    <span class="sub">x QZZ</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginScreen">
+        <div class="login-card">
+            <img src="IMG-20260806-WA0000.jpg" alt="Logo Comunidade" class="community-logo" id="communityLogoLogin">
+
+            <div class="logo">GUTO <span>x</span> QZZ</div>
+            <div class="subtitle">PREMIUM ACCESS • PAYPAL</div>
+            <div class="access-text">Acesse sua conta</div>
+
+            <div class="input-group">
+                <input type="text" id="keyInput" placeholder="Digite sua key" autocomplete="off">
+                <button class="btn-login" id="loginBtn">Entrar</button>
+                <a href="https://discord.gg/MfY4EAFKnf" target="_blank" class="btn-discord">Adquirir Key</a>
+            </div>
+
+            <div class="info-box" id="keyInfo">
+                <div class="label">Válido até</div>
+                <div class="value" id="validUntil">--</div>
+                <div class="sub" id="timeLeft">--</div>
+            </div>
+
+            <div class="links">
+                <a href="#" onclick="showToast('Contate o suporte no Discord')">Esqueceu a key?</a>
+                <a href="#" onclick="showToast('Ajuda disponível no Discord')">Ajuda</a>
+            </div>
+
+            <div class="footer">Android • iOS • Premium</div>
+        </div>
+    </div>
+
+    <div id="mainApp">
+        <div class="panel">
+            <img src="IMG-20260806-WA0000.jpg" alt="Logo Comunidade" class="panel-community-logo" id="communityLogoPanel">
+
+            <div class="logo">QZZ <span>x</span> GUTO</div>
+            <div class="desc">Premium • PayPal</div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('funcoes',this)"><span>✦</span> FUNÇÕES</div>
+                <div class="tab" onclick="showTab('lag',this)"><span>▾</span> LAG</div>
+                <div class="tab" onclick="showTab('arquivos',this)"><span>📦</span> ARQUIVOS</div>
+                <div class="tab" onclick="showTab('conta',this)"><span>ⓘ</span> CONTA</div>
+            </div>
+
+            <div class="section active" id="funcoes">
+                <div class="card active" onclick="toggleCard(this, event)">
+                    <div class="left"><h3>Remover tremedeira</h3><p>Estabilização de mira</p></div>
+                    <div class="status"></div>
+                </div>
+                <div class="card" onclick="toggleCard(this, event)">
+                    <div class="left"><h3>Reduzir recoil</h3><p>Controle de recuo</p></div>
+                    <div class="status"></div>
+                </div>
+                <div class="card active" onclick="toggleCard(this, event)">
+                    <div class="left"><h3>Modo desempenho</h3><p>Otimização de performance</p></div>
+                    <div class="status"></div>
+                </div>
+            </div>
+
+            <div class="section" id="lag">
+                <div class="card active" onclick="toggleCard(this, event)">
+                    <div class="left"><h3>Reduzir lag</h3><p>Otimização de rede</p></div>
+                    <div class="status"></div>
+                </div>
+                <div class="card" onclick="toggleCard(this, event)">
+                    <div class="left"><h3>Travar em 60 FPS</h3><p>Estabilidade de quadros</p></div>
+                    <div class="status"></div>
+                </div>
+            </div>
+
+            <div class="section" id="arquivos">
+                <div class="zip-area" id="zipArea">
+                    <span class="zip-icon">📦</span>
+                    <div class="zip-label">
+                        Arraste ou <strong id="zipTrigger">selecione</strong> um arquivo <strong>.zip</strong>
+                    </div>
+                    <div class="zip-name" id="zipName"></div>
+                    <div class="zip-status" id="zipStatus">Nenhum arquivo carregado</div>
+                    <input type="file" id="zipInput" accept=".zip" style="display:none">
+                    <button class="btn-zip-remove" id="zipRemoveBtn" style="display:none;">Remover arquivo</button>
+                </div>
+                <button class="btn-zip-inject" id="zipInjectBtn" disabled>INJETAR ARQUIVO</button>
+                <div style="margin-top:10px; color:#6a5050; font-size:11px; text-align:center;">O arquivo será processado e injetado no sistema.</div>
+            </div>
+
+            <div class="section" id="conta">
+                <div class="card" style="cursor:default;">
+                    <div class="left"><h3>Expira em</h3><p id="expirationDate">Carregando...</p></div>
+                    <div class="status" style="background:#2a1a1a;border-color:#3a2a2a;box-shadow:none;"></div>
+                </div>
+                <div class="card" style="cursor:default;">
+                    <div class="left"><h3>Tempo restante</h3><p id="daysLeft">--</p></div>
+                    <div class="status" style="background:#2a1a1a;border-color:#3a2a2a;box-shadow:none;"></div>
+                </div>
+                <a class="logout-link" onclick="logout()">Sair da conta</a>
+            </div>
+
+            <button class="activate" id="injetarBtn">INJETAR FUNÇÕES</button>
+            <div class="info">Android • iOS • Overlay</div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Mensagem</div>
+
+    <div id="loadingScreen"><div class="loader"><div class="spinner"></div><h2>Injetando...</h2></div></div>
+
+    <script>
+        // ============================================================
+        // ===== CONFIGURAÇÃO DO BACKEND =====
+        // ============================================================
+        const API_BASE = 'https://qzz-backend.onrender.com';
+
+        // ============================================================
+        // ===== KEYS PERMANENTES (offline) =====
+        // ============================================================
+        const VALID_KEYS = [
+            'qzz-xjwshx-4r243r',
+            'qzz-abcxyz-7h8k9l',
+            'qzz-pqrstu-2w3x4y',
+            'qzz-mnopqr-5a6b7c'
+        ];
+
+        // ============================================================
+        // ===== KEYS BLOQUEADAS (PRECISION) =====
+        // ============================================================
+        const BLOCKED_KEYS = [
+            'QZZ-H7N4K2-P9RX',
+            'QZZ-B3V8M6-T5QW',
+            'QZZ-X2D9L7-C4KP',
+            'QZZ-R6T3F8-N2VM',
+            'QZZ-M5K9P4-W7XD'
+        ].map(k => k.toLowerCase());
+
+        const PERMANENT_EXPIRY = new Date('2100-01-01T00:00:00');
+
+        // ============================================================
+        // ===== TELA DE CARREGAMENTO INICIAL =====
+        // ============================================================
+        setTimeout(() => {
+            const initialScreen = document.getElementById('initialLoadingScreen');
+            initialScreen.classList.add('fade-out');
+            setTimeout(() => initialScreen.style.display = 'none', 500);
+        }, 2500);
+
+        // ============================================================
+        // ===== TOAST =====
+        // ============================================================
+        let toastTimer;
+        function showToast(msg, type = '') {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast' + (type === 'error' ? ' error' : '');
+            el.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        // ============================================================
+        // ===== HWID =====
+        // ============================================================
+        function getBrowserHwid() {
+            let hwid = localStorage.getItem('qzz_hwid');
+            if (!hwid) {
+                hwid = crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+                localStorage.setItem('qzz_hwid', hwid);
+            }
+            return hwid;
+        }
+
+        // ============================================================
+        // ===== SISTEMA DE KEY =====
+        // ============================================================
+        let currentKey = null;
+        let countdownInterval = null;
+        let sessionCheckInterval = null;
+        const TOKEN_STORAGE = 'qzz_token';
+        const EXPIRY_STORAGE = 'qzz_expiry';
+
+        async function validateKey(code) {
+            const normalized = code.trim().toLowerCase();
+
+            if (BLOCKED_KEYS.includes(normalized)) {
+                showToast('Key registrada em outro dispositivo', 'error');
+                return false;
+            }
+
+            if (VALID_KEYS.includes(normalized)) {
+                currentKey = { key: normalized, expiry: new Date(PERMANENT_EXPIRY) };
+                localStorage.setItem(TOKEN_STORAGE, 'permanent-token-' + normalized);
+                localStorage.setItem(EXPIRY_STORAGE, String(PERMANENT_EXPIRY.getTime()));
+                showToast('Acesso permanente liberado!', '');
+                return true;
+            }
+
+            try {
+                const response = await fetch(API_BASE + '/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: code, hwid: getBrowserHwid() })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showToast(data.message || 'Falha na validação', 'error');
+                    return false;
+                }
+
+                localStorage.setItem(TOKEN_STORAGE, data.token);
+                localStorage.setItem(EXPIRY_STORAGE, String(data.expiresAt));
+                currentKey = { key: code, expiry: new Date(data.expiresAt) };
+                showToast('Acesso liberado!', '');
+                return true;
+            } catch (error) {
+                showToast('Erro ao conectar ao servidor', 'error');
+                console.error('Erro na validação:', error);
+                return false;
+            }
+        }
+
+        async function restoreSession() {
+            const token = localStorage.getItem(TOKEN_STORAGE);
+            const expiry = localStorage.getItem(EXPIRY_STORAGE);
+            if (!token || !expiry) return false;
+
+            const expiryDate = new Date(Number(expiry));
+            if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+                localStorage.removeItem(TOKEN_STORAGE);
+                localStorage.removeItem(EXPIRY_STORAGE);
+                return false;
+            }
+
+            if (token.startsWith('permanent-token-')) {
+                const key = token.replace('permanent-token-', '');
+                if (VALID_KEYS.includes(key)) {
+                    currentKey = { key: key, expiry: expiryDate };
+                    return true;
+                } else {
+                    localStorage.removeItem(TOKEN_STORAGE);
+                    localStorage.removeItem(EXPIRY_STORAGE);
+                    return false;
+                }
+            }
+
+            try {
+                const response = await fetch(API_BASE + '/api/auth/session', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    localStorage.removeItem(TOKEN_STORAGE);
+                    localStorage.removeItem(EXPIRY_STORAGE);
+                    return false;
+                }
+                if (data.expiresAt) {
+                    localStorage.setItem(EXPIRY_STORAGE, String(data.expiresAt));
+                    currentKey = { key: 'sessao', expiry: new Date(data.expiresAt) };
+                } else {
+                    currentKey = { key: 'sessao', expiry: expiryDate };
+                }
+                return true;
+            } catch (error) {
+                currentKey = { key: 'sessao', expiry: expiryDate };
+                return true;
+            }
+        }
+
+        function showKeyInfo(expiry) {
+            const box = document.getElementById('keyInfo');
+            const until = document.getElementById('validUntil');
+            const left = document.getElementById('timeLeft');
+            box.style.display = 'block';
+            until.textContent = expiry.toLocaleDateString('pt-BR') + ' às ' + expiry.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            updateCountdown(expiry, left);
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => updateCountdown(expiry, left), 1000);
+        }
+
+        function updateCountdown(expiry, el) {
+            const diff = expiry - Date.now();
+            if (diff <= 0) {
+                el.textContent = 'Expirada';
+                el.style.color = '#ff5555';
+                clearInterval(countdownInterval);
+                forceLogout('Sua key expirou');
+                return;
+            }
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            el.textContent = `${d}d ${h}h ${m}m ${s}s restantes`;
+            el.style.color = '#b08080';
+        }
+
+        function openApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            updateExpirationInfo();
+            startSessionWatcher();
+        }
+
+        function updateExpirationInfo() {
+            if (!currentKey) return;
+            const expiry = currentKey.expiry;
+            document.getElementById('expirationDate').textContent = expiry.toLocaleDateString('pt-BR') + ' às ' + expiry.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const diff = expiry - Date.now();
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            document.getElementById('daysLeft').textContent = `${d} dias e ${h} horas restantes`;
+        }
+
+        function logout() {
+            if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+            localStorage.removeItem(TOKEN_STORAGE);
+            localStorage.removeItem(EXPIRY_STORAGE);
+            if (countdownInterval) clearInterval(countdownInterval);
+            currentKey = null;
+            showToast('Sessão encerrada', 'error');
+            setTimeout(() => location.reload(), 1000);
+        }
+
+        // ============================================================
+        // ===== LOGOUT AUTOMÁTICO (quando a key expira) =====
+        // ============================================================
+        function forceLogout(msg) {
+            localStorage.removeItem(TOKEN_STORAGE);
+            localStorage.removeItem(EXPIRY_STORAGE);
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+            currentKey = null;
+            showToast('⚠ ' + (msg || 'Sessão expirada'), 'error');
+            setTimeout(() => location.reload(), 2500);
+        }
+
+        function startSessionWatcher() {
+            if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+            sessionCheckInterval = setInterval(async () => {
+                if (!currentKey) return;
+
+                if (Date.now() >= currentKey.expiry.getTime()) {
+                    forceLogout('Sua key expirou');
+                    return;
+                }
+
+                if (currentKey.key === 'sessao') {
+                    const token = localStorage.getItem(TOKEN_STORAGE);
+                    if (!token) return forceLogout('Sessão inválida');
+
+                    try {
+                        const resp = await fetch(API_BASE + '/api/auth/session', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        const data = await resp.json();
+                        if (!data.success) {
+                            forceLogout('Sessão encerrada pelo servidor');
+                        } else if (data.expiresAt) {
+                            currentKey.expiry = new Date(data.expiresAt);
+                        }
+                    } catch (e) {
+                        console.warn('Session check falhou:', e);
+                    }
+                }
+            }, 30000);
+        }
+
+        // ============================================================
+        // ===== EVENTOS DE LOGIN =====
+        // ============================================================
+        document.getElementById('loginBtn').addEventListener('click', async function(e) {
+            e.preventDefault();
+            const key = document.getElementById('keyInput').value.trim();
+            if (!key) return showToast('Digite sua key', 'error');
+            this.disabled = true;
+            this.textContent = 'Validando...';
+            const ok = await validateKey(key);
+            this.disabled = false;
+            this.textContent = 'Entrar';
+            if (ok) {
+                showKeyInfo(currentKey.expiry);
+                setTimeout(openApp, 1000);
+            }
+        });
+
+        document.getElementById('keyInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+
+        // ============================================================
+        // ===== RESTAURAR SESSÃO AO ABRIR =====
+        // ============================================================
+        (async function init() {
+            if (await restoreSession()) {
+                showKeyInfo(currentKey.expiry);
+                setTimeout(openApp, 500);
+            }
+        })();
+
+        // ============================================================
+        // ===== TOGGLE CARDS =====
+        // ============================================================
+        function toggleCard(card, event) {
+            if (card.closest('#conta')) return;
+            card.classList.toggle('active');
+            const nome = card.querySelector('h3').innerText;
+            const isActive = card.classList.contains('active');
+            showToast(isActive ? nome + ' ativado' : nome + ' desativado');
+        }
+
+        // ============================================================
+        // ===== TABS =====
+        // ============================================================
+        function showTab(id, el) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        // ============================================================
+        // ===== UPLOAD DE ZIP =====
+        // ============================================================
+        const zipInput = document.getElementById('zipInput');
+        const zipName = document.getElementById('zipName');
+        const zipStatus = document.getElementById('zipStatus');
+        const zipRemoveBtn = document.getElementById('zipRemoveBtn');
+        const zipInjectBtn = document.getElementById('zipInjectBtn');
+        const zipArea = document.getElementById('zipArea');
+        let selectedFile = null;
+
+        document.getElementById('zipTrigger').addEventListener('click', () => zipInput.click());
+
+        zipArea.addEventListener('click', (e) => {
+            if (e.target === zipArea || e.target.closest('.zip-label') || e.target.closest('.zip-icon')) {
+                zipInput.click();
+            }
+        });
+
+        zipArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zipArea.classList.add('dragover');
+        });
+        zipArea.addEventListener('dragleave', () => {
+            zipArea.classList.remove('dragover');
+        });
+        zipArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zipArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                processFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        zipInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                processFile(this.files[0]);
+            }
+        });
+
+        function processFile(file) {
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                showToast('Por favor, selecione um arquivo .zip', 'error');
+                return;
+            }
+            selectedFile = file;
+            zipName.textContent = '📎 ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+            zipStatus.textContent = '✅ Arquivo carregado com sucesso!';
+            zipStatus.className = 'zip-status success';
+            zipRemoveBtn.style.display = 'inline-block';
+            zipInjectBtn.disabled = false;
+            showToast('Arquivo ' + file.name + ' carregado');
+        }
+
+        zipRemoveBtn.addEventListener('click', function() {
+            selectedFile = null;
+            zipName.textContent = '';
+            zipStatus.textContent = 'Nenhum arquivo carregado';
+            zipStatus.className = 'zip-status';
+            zipRemoveBtn.style.display = 'none';
+            zipInjectBtn.disabled = true;
+            zipInput.value = '';
+            showToast('Arquivo removido');
+        });
+
+        zipInjectBtn.addEventListener('click', function() {
+            if (!selectedFile) return;
+            this.disabled = true;
+            this.textContent = 'INJETANDO...';
+            showToast('Processando arquivo ' + selectedFile.name + '...');
+            setTimeout(() => {
+                showToast('✅ Arquivo injetado com sucesso!', '');
+                this.disabled = false;
+                this.textContent = 'INJETAR ARQUIVO';
+            }, 2500);
+        });
+
+        // ============================================================
+        // ===== INJETAR FUNÇÕES =====
+        // ============================================================
+        let injetando = false;
+        document.getElementById('injetarBtn').addEventListener('click', function() {
+            if (injetando) return;
+            injetando = true;
+            const btn = this;
+            btn.disabled = true;
+            const loading = document.getElementById('loadingScreen');
+            loading.style.display = 'flex';
+            setTimeout(() => {
+                loading.style.display = 'none';
+                btn.disabled = false;
+                injetando = false;
+                showToast('✦ Funções injetadas com sucesso!');
+                window.location.href = 'freefire://';
+                setTimeout(() => {
+                    if (!document.hidden) {
+                        window.location.href = 'https://play.google.com/store/apps/details?id=com.dts.freefireth';
+                    }
+                }, 3000);
+            }, 3000);
+        });
+    </script>
+
+</body>
+</html>

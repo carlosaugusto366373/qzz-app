@@ -1,0 +1,17 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Android
+*.iml
+.idea/
+local.properties
+captures/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# A pasta de dentro que sobrou
+qzz-app/
