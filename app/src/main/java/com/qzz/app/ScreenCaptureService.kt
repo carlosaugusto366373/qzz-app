@@ -13,10 +13,11 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
-import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.WindowManager
+import java.nio.ByteBuffer
 
 class ScreenCaptureService : Service() {
 
@@ -48,22 +49,29 @@ class ScreenCaptureService : Service() {
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
     private val handler = Handler(Looper.getMainLooper())
+
+    private var workerThread: HandlerThread? = null
+    private var worker: Handler? = null
+
     private var screenW = 0
     private var screenH = 0
     private var screenDpi = 0
+
+    // bitmap reusado
+    private var reuseBmp: Bitmap? = null
+    private var reuseBuffer: ByteBuffer? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
+        workerThread = HandlerThread("qzz-worker").also { it.start() }
+        worker = Handler(workerThread!!.looper)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
-        // ============================================================
-        // startForeground com type (obrigatório no Android 14+)
-        // ============================================================
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIF_ID,
@@ -76,9 +84,6 @@ class ScreenCaptureService : Service() {
 
         val resultCode = intent?.getIntExtra("resultCode", 0) ?: 0
 
-        // ============================================================
-        // getParcelableExtra com tipo explícito (Android 13+)
-        // ============================================================
         val data: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent?.getParcelableExtra("data", Intent::class.java)
         } else {
@@ -122,12 +127,13 @@ class ScreenCaptureService : Service() {
     private val loop = object : Runnable {
         override fun run() {
             if (!running) return
-            try {
-                processFrame()
-            } catch (e: Exception) {
-                // ignora
+            // manda processar na worker thread
+            worker?.post {
+                try {
+                    processFrame()
+                } catch (_: Exception) {}
             }
-            handler.postDelayed(this, 66)
+            handler.postDelayed(this, 16) // ~60fps no agendamento
         }
     }
 
@@ -141,19 +147,29 @@ class ScreenCaptureService : Service() {
             val pixelStride = plane.pixelStride
             val rowStride = plane.rowStride
             val rowPadding = rowStride - pixelStride * screenW
+            val bmpW = screenW + rowPadding / pixelStride
 
-            val bmp = Bitmap.createBitmap(
-                screenW + rowPadding / pixelStride,
-                screenH,
-                Bitmap.Config.ARGB_8888
-            )
-            bmp.copyPixelsFromBuffer(buffer)
+            // reusa bitmap e buffer
+            var bmp = reuseBmp
+            if (bmp == null || bmp.width != bmpW || bmp.height != screenH) {
+                bmp?.recycle()
+                bmp = Bitmap.createBitmap(bmpW, screenH, Bitmap.Config.ARGB_8888)
+                reuseBmp = bmp
+                reuseBuffer = ByteBuffer.allocateDirect(buffer.capacity())
+            }
+
+            val dst = reuseBuffer!!
+            dst.clear()
+            buffer.rewind()
+            dst.put(buffer)
+            dst.rewind()
+
+            bmp!!.copyPixelsFromBuffer(dst)
 
             if (aimEnabled) {
                 AimDetector.process(bmp, screenW, screenH)
             }
-
-            bmp.recycle()
+            // não recicla — reusa
         } finally {
             image.close()
         }
@@ -187,9 +203,13 @@ class ScreenCaptureService : Service() {
     override fun onDestroy() {
         running = false
         handler.removeCallbacks(loop)
+        workerThread?.quitSafely()
         virtualDisplay?.release()
         projection?.stop()
         imageReader?.close()
+        reuseBmp?.recycle()
+        reuseBmp = null
+        reuseBuffer = null
         super.onDestroy()
     }
 }
