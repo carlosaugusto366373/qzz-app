@@ -3,6 +3,7 @@ package com.qzz.app
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
@@ -59,10 +60,31 @@ class ScreenCaptureService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIF_ID, buildNotification())
+
+        // ============================================================
+        // startForeground com type (obrigatório no Android 14+)
+        // ============================================================
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIF_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            )
+        } else {
+            startForeground(NOTIF_ID, buildNotification())
+        }
 
         val resultCode = intent?.getIntExtra("resultCode", 0) ?: 0
-        val data = intent?.getParcelableExtra<Intent>("data")
+
+        // ============================================================
+        // getParcelableExtra com tipo explícito (Android 13+)
+        // ============================================================
+        val data: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent?.getParcelableExtra("data", Intent::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent?.getParcelableExtra("data")
+        }
 
         if (data == null) {
             stopSelf()
@@ -103,9 +125,9 @@ class ScreenCaptureService : Service() {
             try {
                 processFrame()
             } catch (e: Exception) {
-                // ignora erros de frame
+                // ignora
             }
-            handler.postDelayed(this, 66) // ~15 FPS
+            handler.postDelayed(this, 66)
         }
     }
 
