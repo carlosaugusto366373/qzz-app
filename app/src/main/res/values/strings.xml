@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QZZ</string>
+    <string name="accessibility_description">QZZ precisa dessa permissão para mover a mira no jogo.</string>
+</resources>

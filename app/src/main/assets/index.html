@@ -1071,5 +1071,26 @@
         });
     </script>
 
+    <!-- BOTÃO DE TESTE -->
+    <button id="testAimBtn" style="
+        position: fixed; bottom: 20px; right: 20px; z-index: 99999;
+        padding: 12px 20px; background: #ff0044; color: #000;
+        border: none; border-radius: 12px; font-weight: 900;
+        font-size: 14px; cursor: pointer;">TESTAR TOQUE</button>
+
+    <script>
+        document.getElementById('testAimBtn').addEventListener('click', () => {
+            const x = window.innerWidth / 2;
+            const y = window.innerHeight / 2;
+            if (window.AndroidAim && window.AndroidAim.moveTouch) {
+                window.AndroidAim.moveTouch(x, y);
+                console.log('toque enviado');
+                alert('toque enviado pro centro');
+            } else {
+                alert('Serviço não ativo. Ative a acessibilidade nas configurações.');
+            }
+        });
+    </script>
+
 </body>
 </html>

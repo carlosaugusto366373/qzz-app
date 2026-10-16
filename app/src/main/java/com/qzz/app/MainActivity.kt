@@ -2,6 +2,7 @@ package com.qzz.app
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -23,6 +24,14 @@ class MainActivity : AppCompatActivity() {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.cacheMode = WebSettings.LOAD_DEFAULT
             webViewClient = WebViewClient()
+
+            addJavascriptInterface(object {
+                @JavascriptInterface
+                fun moveTouch(x: Float, y: Float) {
+                    AimAccessibilityService.instance?.moveTouch(x, y)
+                }
+            }, "AndroidAim")
+
             loadUrl("file:///android_asset/index.html")
         }
 
