@@ -509,6 +509,20 @@
 </head>
 <body>
 
+    <div id="overlayBar" style="
+        position:fixed; top:0; left:0; right:0; height:50px;
+        background:#ff0044; display:flex; align-items:center;
+        justify-content:space-between; padding:0 15px;
+        z-index:999999;">
+        <button onclick="if(window.QZZOverlay)QZZOverlay.minimize()" style="
+            background:transparent; border:none; color:#000;
+            font-weight:900; font-size:22px; cursor:pointer;">—</button>
+        <span style="color:#000; font-weight:900; font-size:16px;">QZZ</span>
+        <button onclick="if(window.QZZOverlay)QZZOverlay.close()" style="
+            background:transparent; border:none; color:#000;
+            font-weight:900; font-size:22px; cursor:pointer;">✕</button>
+    </div>
+
     <div class="bg">
         <div class="floating-orb"></div>
         <div class="floating-orb"></div>
@@ -606,6 +620,10 @@
                     <div class="left"><h3>Modo desempenho</h3><p>Otimização de performance</p></div>
                     <div class="status"></div>
                 </div>
+                <div class="card" onclick="toggleCard(this, event)">
+                    <div class="left"><h3>Aim Assist</h3><p>Mira automática</p></div>
+                    <div class="status"></div>
+                </div>
             </div>
 
             <div class="section" id="lag">
@@ -661,9 +679,6 @@
         // ============================================================
         const API_BASE = 'https://qzz-backend.onrender.com';
 
-        // ============================================================
-        // ===== KEYS PERMANENTES (offline) =====
-        // ============================================================
         const VALID_KEYS = [
             'qzz-xjwshx-4r243r',
             'qzz-abcxyz-7h8k9l',
@@ -671,9 +686,6 @@
             'qzz-mnopqr-5a6b7c'
         ];
 
-        // ============================================================
-        // ===== KEYS BLOQUEADAS (PRECISION) =====
-        // ============================================================
         const BLOCKED_KEYS = [
             'QZZ-H7N4K2-P9RX',
             'QZZ-B3V8M6-T5QW',
@@ -684,18 +696,12 @@
 
         const PERMANENT_EXPIRY = new Date('2100-01-01T00:00:00');
 
-        // ============================================================
-        // ===== TELA DE CARREGAMENTO INICIAL =====
-        // ============================================================
         setTimeout(() => {
             const initialScreen = document.getElementById('initialLoadingScreen');
             initialScreen.classList.add('fade-out');
             setTimeout(() => initialScreen.style.display = 'none', 500);
         }, 2500);
 
-        // ============================================================
-        // ===== TOAST =====
-        // ============================================================
         let toastTimer;
         function showToast(msg, type = '') {
             const el = document.getElementById('toast');
@@ -706,9 +712,6 @@
             toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
         }
 
-        // ============================================================
-        // ===== HWID =====
-        // ============================================================
         function getBrowserHwid() {
             let hwid = localStorage.getItem('qzz_hwid');
             if (!hwid) {
@@ -718,9 +721,6 @@
             return hwid;
         }
 
-        // ============================================================
-        // ===== SISTEMA DE KEY =====
-        // ============================================================
         let currentKey = null;
         let countdownInterval = null;
         let sessionCheckInterval = null;
@@ -749,14 +749,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: code, hwid: getBrowserHwid() })
                 });
-
                 const data = await response.json();
-
                 if (!data.success) {
                     showToast(data.message || 'Falha na validação', 'error');
                     return false;
                 }
-
                 localStorage.setItem(TOKEN_STORAGE, data.token);
                 localStorage.setItem(EXPIRY_STORAGE, String(data.expiresAt));
                 currentKey = { key: code, expiry: new Date(data.expiresAt) };
@@ -764,7 +761,6 @@
                 return true;
             } catch (error) {
                 showToast('Erro ao conectar ao servidor', 'error');
-                console.error('Erro na validação:', error);
                 return false;
             }
         }
@@ -773,26 +769,20 @@
             const token = localStorage.getItem(TOKEN_STORAGE);
             const expiry = localStorage.getItem(EXPIRY_STORAGE);
             if (!token || !expiry) return false;
-
             const expiryDate = new Date(Number(expiry));
             if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
                 localStorage.removeItem(TOKEN_STORAGE);
                 localStorage.removeItem(EXPIRY_STORAGE);
                 return false;
             }
-
             if (token.startsWith('permanent-token-')) {
                 const key = token.replace('permanent-token-', '');
                 if (VALID_KEYS.includes(key)) {
                     currentKey = { key: key, expiry: expiryDate };
                     return true;
-                } else {
-                    localStorage.removeItem(TOKEN_STORAGE);
-                    localStorage.removeItem(EXPIRY_STORAGE);
-                    return false;
                 }
+                return false;
             }
-
             try {
                 const response = await fetch(API_BASE + '/api/auth/session', {
                     headers: { 'Authorization': 'Bearer ' + token }
@@ -841,7 +831,6 @@
             const m = Math.floor((diff % 3600000) / 60000);
             const s = Math.floor((diff % 60000) / 1000);
             el.textContent = `${d}d ${h}h ${m}m ${s}s restantes`;
-            el.style.color = '#b08080';
         }
 
         function openApp() {
@@ -885,16 +874,13 @@
             if (sessionCheckInterval) clearInterval(sessionCheckInterval);
             sessionCheckInterval = setInterval(async () => {
                 if (!currentKey) return;
-
                 if (Date.now() >= currentKey.expiry.getTime()) {
                     forceLogout('Sua key expirou');
                     return;
                 }
-
                 if (currentKey.key === 'sessao') {
                     const token = localStorage.getItem(TOKEN_STORAGE);
                     if (!token) return forceLogout('Sessão inválida');
-
                     try {
                         const resp = await fetch(API_BASE + '/api/auth/session', {
                             headers: { 'Authorization': 'Bearer ' + token }
@@ -905,9 +891,7 @@
                         } else if (data.expiresAt) {
                             currentKey.expiry = new Date(data.expiresAt);
                         }
-                    } catch (e) {
-                        console.warn('Session check falhou:', e);
-                    }
+                    } catch (e) {}
                 }
             }, 30000);
         }
@@ -944,6 +928,14 @@
             const nome = card.querySelector('h3').innerText;
             const isActive = card.classList.contains('active');
             showToast(isActive ? nome + ' ativado' : nome + ' desativado');
+
+            // se for o Aim Assist, chama o nativo
+            if (nome.toLowerCase().includes('aim')) {
+                if (typeof QZZAim !== 'undefined') {
+                    if (isActive) QZZAim.startAim();
+                    else QZZAim.stopAim();
+                }
+            }
         }
 
         function showTab(id, el) {
@@ -969,25 +961,16 @@
             }
         });
 
-        zipArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            zipArea.classList.add('dragover');
-        });
-        zipArea.addEventListener('dragleave', () => {
-            zipArea.classList.remove('dragover');
-        });
+        zipArea.addEventListener('dragover', (e) => { e.preventDefault(); zipArea.classList.add('dragover'); });
+        zipArea.addEventListener('dragleave', () => zipArea.classList.remove('dragover'));
         zipArea.addEventListener('drop', (e) => {
             e.preventDefault();
             zipArea.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                processFile(e.dataTransfer.files[0]);
-            }
+            if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]);
         });
 
         zipInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                processFile(this.files[0]);
-            }
+            if (this.files.length > 0) processFile(this.files[0]);
         });
 
         function processFile(file) {
@@ -1027,90 +1010,17 @@
             }, 2500);
         });
 
-        let injetando = false;
+        // ============================================================
+        // ===== BOTÃO INJETAR FUNÇÕES — ABRE OVERLAY =====
+        // ============================================================
         document.getElementById('injetarBtn').addEventListener('click', function() {
-            if (injetando) return;
-            injetando = true;
-            const btn = this;
-            btn.disabled = true;
-            const loading = document.getElementById('loadingScreen');
-            loading.style.display = 'flex';
-            setTimeout(() => {
-                loading.style.display = 'none';
-                btn.disabled = false;
-                injetando = false;
-                showToast('✦ Funções injetadas com sucesso!');
-                window.location.href = 'freefire://';
-                setTimeout(() => {
-                    if (!document.hidden) {
-                        window.location.href = 'https://play.google.com/store/apps/details?id=com.dts.freefireth';
-                    }
-                }, 3000);
-            }, 3000);
-        });
-    </script>
-
-    <!-- BOTÃO TESTAR TOQUE -->
-    <button id="testAimBtn" style="
-        position: fixed; bottom: 20px; right: 20px; z-index: 99999;
-        padding: 12px 20px; background: #ff0044; color: #000;
-        border: none; border-radius: 12px; font-weight: 900;
-        font-size: 14px; cursor: pointer;">TESTAR TOQUE</button>
-
-    <!-- BOTÃO LIGAR CAPTURA -->
-    <button id="captureBtn" style="
-        position: fixed; bottom: 80px; right: 20px; z-index: 99999;
-        padding: 12px 20px; background: #0088ff; color: #fff;
-        border: none; border-radius: 12px; font-weight: 900;
-        font-size: 14px; cursor: pointer;">LIGAR CAPTURA</button>
-
-    <script>
-        // ============================================================
-        // BOTÃO TESTAR TOQUE
-        // ============================================================
-        document.getElementById('testAimBtn').addEventListener('click', () => {
-            const x = window.innerWidth / 2;
-            const y = window.innerHeight / 2;
-            if (window.AndroidAim && window.AndroidAim.moveTouch) {
-                window.AndroidAim.moveTouch(x, y);
-                console.log('toque enviado');
-                alert('toque enviado pro centro');
+            if (typeof AndroidAim !== 'undefined' && AndroidAim.openOverlay) {
+                AndroidAim.openOverlay();
+                showToast('Abrindo overlay...');
             } else {
-                alert('Serviço não ativo. Ative a acessibilidade nas configurações.');
+                showToast('Overlay não disponível', 'error');
             }
         });
-
-        // ============================================================
-        // BOTÃO LIGAR CAPTURA
-        // ============================================================
-        let captureOn = false;
-
-        document.getElementById('captureBtn').addEventListener('click', () => {
-            if (typeof AndroidAim === 'undefined') {
-                alert('Ponte não disponível');
-                return;
-            }
-            if (!captureOn) {
-                AndroidAim.startCapture();
-            } else {
-                AndroidAim.stopCapture();
-                AndroidAim.setAimEnabled(false);
-                captureOn = false;
-                document.getElementById('captureBtn').textContent = 'LIGAR CAPTURA';
-            }
-        });
-
-        window.captureStarted = function() {
-            captureOn = true;
-            AndroidAim.setAimEnabled(true);
-            document.getElementById('captureBtn').textContent = 'DESLIGAR CAPTURA';
-            alert('Captura ligada. Aim ativo.');
-        };
-
-        window.captureDenied = function() {
-            captureOn = false;
-            alert('Permissão de captura negada.');
-        };
     </script>
 
 </body>
