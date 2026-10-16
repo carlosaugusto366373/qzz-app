@@ -16,13 +16,9 @@ class AimAccessibilityService : AccessibilityService() {
         instance = this
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // não faz nada — só precisa estar conectado
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
-    override fun onInterrupt() {
-        // obrigatório, mas não usado
-    }
+    override fun onInterrupt() {}
 
     override fun onDestroy() {
         instance = null
@@ -31,10 +27,25 @@ class AimAccessibilityService : AccessibilityService() {
 
     /**
      * Move o toque na tela pra (x, y).
-     * Chamado pelo AimLoop quando encontra um alvo.
+     * Só faz o toque, sem click.
      */
-    fun moveTouch(x: Float, y: Float, durationMs: Long = 50) {
+    fun moveTouch(x: Float, y: Float, durationMs: Long = 30) {
         val path = Path().apply { moveTo(x, y) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, durationMs))
+            .build()
+        dispatchGesture(gesture, null, null)
+    }
+
+    /**
+     * Simula arrasto na tela (swipe).
+     * Útil pra mover a mira com movimento contínuo.
+     */
+    fun swipe(fromX: Float, fromY: Float, toX: Float, toY: Float, durationMs: Long = 60) {
+        val path = Path().apply {
+            moveTo(fromX, fromY)
+            lineTo(toX, toY)
+        }
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, durationMs))
             .build()

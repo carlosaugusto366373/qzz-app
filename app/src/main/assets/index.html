@@ -871,9 +871,6 @@
             setTimeout(() => location.reload(), 1000);
         }
 
-        // ============================================================
-        // ===== LOGOUT AUTOMÁTICO (quando a key expira) =====
-        // ============================================================
         function forceLogout(msg) {
             localStorage.removeItem(TOKEN_STORAGE);
             localStorage.removeItem(EXPIRY_STORAGE);
@@ -915,9 +912,6 @@
             }, 30000);
         }
 
-        // ============================================================
-        // ===== EVENTOS DE LOGIN =====
-        // ============================================================
         document.getElementById('loginBtn').addEventListener('click', async function(e) {
             e.preventDefault();
             const key = document.getElementById('keyInput').value.trim();
@@ -937,9 +931,6 @@
             if (e.key === 'Enter') document.getElementById('loginBtn').click();
         });
 
-        // ============================================================
-        // ===== RESTAURAR SESSÃO AO ABRIR =====
-        // ============================================================
         (async function init() {
             if (await restoreSession()) {
                 showKeyInfo(currentKey.expiry);
@@ -947,9 +938,6 @@
             }
         })();
 
-        // ============================================================
-        // ===== TOGGLE CARDS =====
-        // ============================================================
         function toggleCard(card, event) {
             if (card.closest('#conta')) return;
             card.classList.toggle('active');
@@ -958,9 +946,6 @@
             showToast(isActive ? nome + ' ativado' : nome + ' desativado');
         }
 
-        // ============================================================
-        // ===== TABS =====
-        // ============================================================
         function showTab(id, el) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
@@ -968,9 +953,6 @@
             el.classList.add('active');
         }
 
-        // ============================================================
-        // ===== UPLOAD DE ZIP =====
-        // ============================================================
         const zipInput = document.getElementById('zipInput');
         const zipName = document.getElementById('zipName');
         const zipStatus = document.getElementById('zipStatus');
@@ -1045,9 +1027,6 @@
             }, 2500);
         });
 
-        // ============================================================
-        // ===== INJETAR FUNÇÕES =====
-        // ============================================================
         let injetando = false;
         document.getElementById('injetarBtn').addEventListener('click', function() {
             if (injetando) return;
@@ -1071,14 +1050,24 @@
         });
     </script>
 
-    <!-- BOTÃO DE TESTE -->
+    <!-- BOTÃO TESTAR TOQUE -->
     <button id="testAimBtn" style="
         position: fixed; bottom: 20px; right: 20px; z-index: 99999;
         padding: 12px 20px; background: #ff0044; color: #000;
         border: none; border-radius: 12px; font-weight: 900;
         font-size: 14px; cursor: pointer;">TESTAR TOQUE</button>
 
+    <!-- BOTÃO LIGAR CAPTURA -->
+    <button id="captureBtn" style="
+        position: fixed; bottom: 80px; right: 20px; z-index: 99999;
+        padding: 12px 20px; background: #0088ff; color: #fff;
+        border: none; border-radius: 12px; font-weight: 900;
+        font-size: 14px; cursor: pointer;">LIGAR CAPTURA</button>
+
     <script>
+        // ============================================================
+        // BOTÃO TESTAR TOQUE
+        // ============================================================
         document.getElementById('testAimBtn').addEventListener('click', () => {
             const x = window.innerWidth / 2;
             const y = window.innerHeight / 2;
@@ -1090,6 +1079,38 @@
                 alert('Serviço não ativo. Ative a acessibilidade nas configurações.');
             }
         });
+
+        // ============================================================
+        // BOTÃO LIGAR CAPTURA
+        // ============================================================
+        let captureOn = false;
+
+        document.getElementById('captureBtn').addEventListener('click', () => {
+            if (typeof AndroidAim === 'undefined') {
+                alert('Ponte não disponível');
+                return;
+            }
+            if (!captureOn) {
+                AndroidAim.startCapture();
+            } else {
+                AndroidAim.stopCapture();
+                AndroidAim.setAimEnabled(false);
+                captureOn = false;
+                document.getElementById('captureBtn').textContent = 'LIGAR CAPTURA';
+            }
+        });
+
+        window.captureStarted = function() {
+            captureOn = true;
+            AndroidAim.setAimEnabled(true);
+            document.getElementById('captureBtn').textContent = 'DESLIGAR CAPTURA';
+            alert('Captura ligada. Aim ativo.');
+        };
+
+        window.captureDenied = function() {
+            captureOn = false;
+            alert('Permissão de captura negada.');
+        };
     </script>
 
 </body>
