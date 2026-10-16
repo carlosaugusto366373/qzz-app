@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
+import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import java.nio.ByteBuffer
@@ -57,7 +58,6 @@ class ScreenCaptureService : Service() {
     private var screenH = 0
     private var screenDpi = 0
 
-    // bitmap reusado
     private var reuseBmp: Bitmap? = null
     private var reuseBuffer: ByteBuffer? = null
 
@@ -127,13 +127,12 @@ class ScreenCaptureService : Service() {
     private val loop = object : Runnable {
         override fun run() {
             if (!running) return
-            // manda processar na worker thread
             worker?.post {
                 try {
                     processFrame()
                 } catch (_: Exception) {}
             }
-            handler.postDelayed(this, 16) // ~60fps no agendamento
+            handler.postDelayed(this, 16)
         }
     }
 
@@ -149,7 +148,6 @@ class ScreenCaptureService : Service() {
             val rowPadding = rowStride - pixelStride * screenW
             val bmpW = screenW + rowPadding / pixelStride
 
-            // reusa bitmap e buffer
             var bmp = reuseBmp
             if (bmp == null || bmp.width != bmpW || bmp.height != screenH) {
                 bmp?.recycle()
@@ -169,7 +167,6 @@ class ScreenCaptureService : Service() {
             if (aimEnabled) {
                 AimDetector.process(bmp, screenW, screenH)
             }
-            // não recicla — reusa
         } finally {
             image.close()
         }
