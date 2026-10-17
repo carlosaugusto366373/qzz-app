@@ -3,6 +3,7 @@ package com.qzz.app
 import android.content.Context
 import dadb.AdbKeyPair
 import dadb.Dadb
+import dadb.PairingConnection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,33 +31,15 @@ object AdbManager {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Caminhos para as chaves
-                val privKeyFile = File(ctx.filesDir, "adbkey")
-                val pubKeyFile = File(ctx.filesDir, "adbkey.pub")
+                // A API do Dadb 1.2.10 exige o keyPair gerado
+                val keyPair: AdbKeyPair = AdbKeyPair.generate()
+                
+                // 1. Faz o pareamento (PairingConnection)
+                val pairing = PairingConnection(keyPair, ip, pairPort)
+                pairing.pair(pairCode)
 
-                val keyPair = if (privKeyFile.exists() && pubKeyFile.exists()) {
-                    AdbKeyPair.read(privKeyFile, pubKeyFile)
-                } else {
-                    AdbKeyPair.generate().also { 
-                        it.write(privKeyFile, pubKeyFile) 
-                    }
-                }
-
-                // 1. Pareamento (API pode ser pair(host, port, code, keyPair) ou pair(host, port, keyPair, code))
-                // Vou usar a assinatura padrão do Dadb mais comum:
-                Dadb.pair(
-                    host = ip,
-                    port = pairPort,
-                    pairingCode = pairCode,
-                    keyPair = keyPair
-                )
-
-                // 2. Conexão
-                dadb = Dadb.create(
-                    host = ip,
-                    port = connectPort,
-                    keyPair = keyPair
-                )
+                // 2. Conecta via ADB normal
+                dadb = Dadb.create(ip, connectPort, keyPair)
 
                 onResult(true, "Conectado")
             } catch (e: Exception) {
@@ -77,7 +60,7 @@ object AdbManager {
         executeCommand("input swipe $x1 $y1 $x2 $y2 $duration")
     }
 
-    fun isConnected(): Boolean = dadb?.isOpen ?: false
+    fun isConnected(): Boolean = dadb?.connected ?: false
 
     fun disconnect() {
         dadb?.close()
