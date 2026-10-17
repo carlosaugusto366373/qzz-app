@@ -2,7 +2,6 @@ package com.qzz.app
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,30 +12,17 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
-import rikka.shizuku.Shizuku
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
-    private val permissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
-        if (requestCode == 100) {
-            val granted = grantResult == PackageManager.PERMISSION_GRANTED
-            runOnUiThread {
-                if (::webView.isInitialized) {
-                    webView.evaluateJavascript("window.adbResult($granted, 'Permissão: $granted')", null)
-                }
-            }
-        }
-    }
-
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        try {
-            Shizuku.addRequestPermissionResultListener(permissionListener)
-        } catch (e: Exception) { }
+        // Inicializa o Dadb com o contexto
+        AdbManager.init(this)
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -71,31 +57,32 @@ class MainActivity : AppCompatActivity() {
                 }
             }, "AndroidAim")
 
-            // Ponte SHIZUKU (ADB sem root)
+            // ============================================================
+            // PONTE ADB (Dadb)
+            // ============================================================
             addJavascriptInterface(object {
                 @JavascriptInterface
-                fun requestShizuku() {
-                    runOnUiThread {
-                        try {
-                            AdbManager.checkPermission { granted ->
-                                if (granted) {
-                                    webView.evaluateJavascript("window.adbResult(true, 'Shizuku conectado!')", null)
-                                } else {
-                                    AdbManager.requestPermission()
-                                    webView.evaluateJavascript("window.adbResult(false, 'Aguardando permissão...')", null)
-                                }
+                fun pairAdb(ip: String, port: String) {
+                    try {
+                        AdbManager.connect(ip, port.toInt()) { ok, msg ->
+                            runOnUiThread {
+                                webView.evaluateJavascript(
+                                    "window.adbResult($ok, '$msg')", null
+                                )
                             }
-                        } catch (e: Exception) {
-                            webView.evaluateJavascript("window.adbResult(false, 'Shizuku não está rodando. Abra o app Shizuku primeiro.')", null)
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread {
+                            webView.evaluateJavascript(
+                                "window.adbResult(false, 'Erro: ${e.message}')", null
+                            )
                         }
                     }
                 }
 
                 @JavascriptInterface
                 fun sendCommand(cmd: String) {
-                    try {
-                        AdbManager.executeCommand(cmd)
-                    } catch (e: Exception) { }
+                    AdbManager.executeCommand(cmd)
                 }
             }, "QZZAdb")
 
@@ -103,13 +90,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContentView(webView)
-    }
-
-    override fun onDestroy() {
-        try {
-            Shizuku.removeRequestPermissionResultListener(permissionListener)
-        } catch (e: Exception) { }
-        super.onDestroy()
     }
 
     override fun onBackPressed() {

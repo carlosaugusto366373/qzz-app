@@ -1,39 +1,16 @@
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-}
+        function connectAdb() {
+            const ip = document.getElementById('adbIp').value;
+            const port = document.getElementById('adbCode').value;
 
-android {
-    namespace = "com.qzz.app"
-    compileSdk = 34
+            if (!ip || !port) {
+                showToast('Preencha o IP e a Porta (5555)', 'error');
+                return;
+            }
 
-    defaultConfig {
-        applicationId = "com.qzz.app"
-        minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
+            showToast('Conectando...', '');
+            if (typeof QZZAdb !== 'undefined') {
+                QZZAdb.pairAdb(ip, "", port);
+            } else {
+                showToast('ADB não suportado nesse dispositivo', 'error');
+            }
         }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-}
-
-dependencies {
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("androidx.core:core-ktx:1.13.1")
-    
-    // Shizuku
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
-}

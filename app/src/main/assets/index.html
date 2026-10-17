@@ -666,20 +666,23 @@
 
             <button class="activate" id="injetarBtn">INJETAR FUNÇÕES</button>
             
-            <!-- BOTÃO CONECTAR SHIZUKU -->
-            <button class="activate" id="adbBtn" style="margin-top: 10px; background: linear-gradient(135deg, #0088ff, #0055cc); display: none;">CONECTAR SHIZUKU</button>
+            <!-- BOTÃO CONECTAR ADB -->
+            <button class="activate" id="adbBtn" style="margin-top: 10px; background: linear-gradient(135deg, #0088ff, #0055cc); display: none;">CONECTAR ADB</button>
             
             <div class="info">Android • iOS • Overlay</div>
         </div>
     </div>
 
-    <!-- MODAL DE CONEXÃO SHIZUKU -->
+    <!-- MODAL DE CONEXÃO ADB -->
     <div id="adbModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 999999;">
         <div style="background: #1a0808; padding: 20px; border-radius: 16px; border: 1px solid #ff0044; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 10px;">
-            <h2 style="color: #ff0044; text-align: center; margin-bottom: 10px;">Conexão Shizuku</h2>
-            <p style="color: #b08080; font-size: 12px; text-align: center; margin-bottom: 10px;">O app precisa do Shizuku rodando no celular. Clique em CONECTAR e aceite o popup de permissão.</p>
+            <h2 style="color: #ff0044; text-align: center; margin-bottom: 10px;">Conexão ADB Wi-Fi</h2>
+            <p style="color: #b08080; font-size: 12px; text-align: center; margin-bottom: 10px;">Coloque o IP do seu celular e a porta (5555).</p>
             
-            <button onclick="connectShizuku()" style="padding: 12px; border-radius: 8px; border: none; background: #ff0044; color: #000; font-weight: bold; margin-top: 10px; cursor: pointer;">CONECTAR</button>
+            <input type="text" id="adbIp" placeholder="IP (ex: 192.168.1.15)" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
+            <input type="text" id="adbCode" placeholder="Porta de Conexão (ex: 5555)" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
+            
+            <button onclick="connectAdb()" style="padding: 12px; border-radius: 8px; border: none; background: #ff0044; color: #000; font-weight: bold; margin-top: 10px; cursor: pointer;">CONECTAR</button>
             <button onclick="closeAdbModal()" style="padding: 12px; border-radius: 8px; border: none; background: transparent; color: #b08080; cursor: pointer;">CANCELAR</button>
         </div>
     </div>
@@ -865,7 +868,7 @@
             updateExpirationInfo();
             startSessionWatcher();
             
-            // Mostra o botão SHIZUKU se estiver no app
+            // Mostra o botão ADB se estiver no app
             document.getElementById('adbBtn').style.display = 'block';
         }
 
@@ -974,7 +977,7 @@
         }
 
         // ============================================================
-        // LÓGICA DO SHIZUKU
+        // LÓGICA DO ADB
         // ============================================================
         function openAdbModal() {
             document.getElementById('adbModal').style.display = 'flex';
@@ -982,28 +985,36 @@
         function closeAdbModal() {
             document.getElementById('adbModal').style.display = 'none';
         }
-        function connectShizuku() {
-            showToast('Verificando Shizuku...', '');
+        function connectAdb() {
+            const ip = document.getElementById('adbIp').value;
+            const port = document.getElementById('adbCode').value;
+
+            if (!ip || !port) {
+                showToast('Preencha o IP e a Porta (5555)', 'error');
+                return;
+            }
+
+            showToast('Conectando...', '');
             if (typeof QZZAdb !== 'undefined') {
-                QZZAdb.requestShizuku();
+                QZZAdb.pairAdb(ip, "", port);
             } else {
-                showToast('Shizuku não suportado nesse dispositivo', 'error');
+                showToast('ADB não suportado nesse dispositivo', 'error');
             }
         }
 
         window.adbResult = function(success, msg) {
             if (success) {
-                showToast('✅ Shizuku Conectado!', '');
+                showToast('✅ ADB Conectado!', '');
                 closeAdbModal();
             } else {
-                showToast('Status: ' + msg, 'error');
+                showToast('❌ Falha ADB: ' + msg, 'error');
             }
         };
 
         document.getElementById('adbBtn').addEventListener('click', openAdbModal);
 
         // ============================================================
-        // INJETAR E ZIP
+        // INJETAR E ZIP (O restante do código de ZIP e INJETAR segue igual)
         // ============================================================
         const zipInput = document.getElementById('zipInput');
         const zipName = document.getElementById('zipName');

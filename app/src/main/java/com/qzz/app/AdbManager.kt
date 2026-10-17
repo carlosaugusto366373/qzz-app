@@ -1,39 +1,55 @@
 package com.qzz.app
 
-import android.content.pm.PackageManager
-import rikka.shizuku.Shizuku
+import android.content.Context
+import dadb.AdbKeyPair
+import dadb.Dadb
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
 
 object AdbManager {
-    private const val PERMISSION_REQUEST_CODE = 100
+    private var dadb: Dadb? = null
+    private var appContext: Context? = null
 
-    fun checkPermission(onResult: (Boolean) -> Unit) {
-        if (!Shizuku.pingBinder()) {
-            onResult(false)
+    fun init(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    fun connect(
+        ip: String,
+        port: Int,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val ctx = appContext ?: run {
+            onResult(false, "Contexto não inicializado")
             return
         }
-        if (Shizuku.isPreV11() || Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-            onResult(true)
-        } else {
-            onResult(false)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val keyFile = File(ctx.filesDir, "adbkey")
+                val pubFile = File(ctx.filesDir, "adbkey.pub")
+                
+                val keyPair = if (keyFile.exists() && pubFile.exists()) {
+                    AdbKeyPair.read(keyFile, pubFile)
+                } else {
+                    AdbKeyPair.generate().also {
+                        it.write(keyFile, pubFile)
+                    }
+                }
+
+                dadb = Dadb.create(ip, port, keyPair)
+                onResult(true, "Conectado")
+            } catch (e: Exception) {
+                onResult(false, e.message ?: "Erro")
+            }
         }
     }
 
-    fun requestPermission() {
-        if (!Shizuku.isPreV11() && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-            Shizuku.requestPermission(PERMISSION_REQUEST_CODE)
-        }
-    }
-
-    // Roda o comando usando ProcessBuilder padrão
     fun executeCommand(command: String): String {
         return try {
-            val process = ProcessBuilder("sh", "-c", command)
-                .redirectErrorStream(true)
-                .start()
-            
-            val output = process.inputStream.bufferedReader().readText()
-            process.waitFor()
-            output.ifEmpty { "OK" }
+            dadb?.shell(command)?.output ?: "Desconectado"
         } catch (e: Exception) {
             "Erro: ${e.message}"
         }
@@ -43,7 +59,10 @@ object AdbManager {
         executeCommand("input swipe $x1 $y1 $x2 $y2 $duration")
     }
 
-    fun tap(x: Int, y: Int) {
-        executeCommand("input tap $x $y")
+    fun isConnected(): Boolean = dadb != null
+
+    fun disconnect() {
+        dadb?.close()
+        dadb = null
     }
 }
