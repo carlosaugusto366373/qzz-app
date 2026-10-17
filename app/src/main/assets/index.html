@@ -677,10 +677,12 @@
     <div id="adbModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 999999;">
         <div style="background: #1a0808; padding: 20px; border-radius: 16px; border: 1px solid #ff0044; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 10px;">
             <h2 style="color: #ff0044; text-align: center; margin-bottom: 10px;">Conexão ADB Wi-Fi</h2>
-            <p style="color: #b08080; font-size: 12px; text-align: center; margin-bottom: 10px;">Coloque o IP do seu celular e a porta (5555).</p>
+            <p style="color: #b08080; font-size: 12px; text-align: center; margin-bottom: 10px;">Ative a Depuração Wi-Fi nas configurações do Android, pegue o IP e a porta (5555) e coloque aqui.</p>
+            
+            <button onclick="openSettings()" style="padding: 10px; border-radius: 8px; border: 1px solid #ff0044; background: transparent; color: #ff0044; font-weight: bold; cursor: pointer;">ABRIR CONFIGURAÇÕES DO ANDROID</button>
             
             <input type="text" id="adbIp" placeholder="IP (ex: 192.168.1.15)" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
-            <input type="text" id="adbCode" placeholder="Porta de Conexão (ex: 5555)" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
+            <input type="text" id="adbCode" placeholder="Porta (ex: 5555)" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
             
             <button onclick="connectAdb()" style="padding: 12px; border-radius: 8px; border: none; background: #ff0044; color: #000; font-weight: bold; margin-top: 10px; cursor: pointer;">CONECTAR</button>
             <button onclick="closeAdbModal()" style="padding: 12px; border-radius: 8px; border: none; background: transparent; color: #b08080; cursor: pointer;">CANCELAR</button>
@@ -960,13 +962,6 @@
             const nome = card.querySelector('h3').innerText;
             const isActive = card.classList.contains('active');
             showToast(isActive ? nome + ' ativado' : nome + ' desativado');
-
-            if (nome.toLowerCase().includes('aim')) {
-                if (typeof QZZAim !== 'undefined') {
-                    if (isActive) QZZAim.startAim();
-                    else QZZAim.stopAim();
-                }
-            }
         }
 
         function showTab(id, el) {
@@ -985,6 +980,15 @@
         function closeAdbModal() {
             document.getElementById('adbModal').style.display = 'none';
         }
+        
+        function openSettings() {
+            if (typeof QZZAdb !== 'undefined') {
+                QZZAdb.openDebuggingSettings();
+            } else {
+                showToast('Não foi possível abrir as configurações.', 'error');
+            }
+        }
+
         function connectAdb() {
             const ip = document.getElementById('adbIp').value;
             const port = document.getElementById('adbCode').value;
@@ -996,7 +1000,8 @@
 
             showToast('Conectando...', '');
             if (typeof QZZAdb !== 'undefined') {
-                QZZAdb.pairAdb(ip, "", port);
+                // Passa (ip, port) igual o Kotlin espera
+                QZZAdb.pairAdb(ip, port);
             } else {
                 showToast('ADB não suportado nesse dispositivo', 'error');
             }
@@ -1014,7 +1019,7 @@
         document.getElementById('adbBtn').addEventListener('click', openAdbModal);
 
         // ============================================================
-        // INJETAR E ZIP (O restante do código de ZIP e INJETAR segue igual)
+        // INJETAR E ZIP
         // ============================================================
         const zipInput = document.getElementById('zipInput');
         const zipName = document.getElementById('zipName');
