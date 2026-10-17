@@ -28,11 +28,15 @@ class MainActivity : AppCompatActivity() {
             settings.domStorageEnabled = true
             settings.allowFileAccess = true
             settings.allowContentAccess = true
-            settings.mediaPlaybackRequiresUserGesture = false
             webViewClient = WebViewClient()
             webChromeClient = WebChromeClient()
 
             addJavascriptInterface(object {
+                @JavascriptInterface
+                fun moveTouch(x: Float, y: Float) {
+                    AimAccessibilityService.instance?.moveTouch(x, y)
+                }
+
                 @JavascriptInterface
                 fun openOverlay() {
                     runOnUiThread {
@@ -45,24 +49,26 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-            }, "AndroidAim")
 
-            addJavascriptInterface(object {
                 @JavascriptInterface
                 fun openDebuggingSettings() {
                     runOnUiThread {
                         try {
+                            // Abre a tela de Opções do Desenvolvedor
                             startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
                         } catch (e: Exception) {
-                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                            try {
+                                // Fallback se o acima não funcionar
+                                startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                            } catch (e2: Exception) { }
                         }
                     }
                 }
 
                 @JavascriptInterface
-                fun pairAdb(ip: String, port: String) {
+                fun pairAdb(ip: String, pairPort: String, code: String, connectPort: String) {
                     try {
-                        AdbManager.connect(ip, port.toInt()) { ok, msg ->
+                        AdbManager.pairAndConnect(ip, pairPort.toInt(), code, connectPort.toInt()) { ok, msg ->
                             runOnUiThread {
                                 webView.evaluateJavascript("window.adbResult($ok, '$msg')", null)
                             }

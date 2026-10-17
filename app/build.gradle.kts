@@ -32,4 +32,5 @@ android {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("dev.mobile:dadb:1.2.10")
 }
