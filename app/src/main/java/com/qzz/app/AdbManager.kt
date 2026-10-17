@@ -29,20 +29,21 @@ object AdbManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val keyFile = File(ctx.filesDir, "adbkey")
-                val pubFile = File(ctx.filesDir, "adbkey.pub")
                 
-                val keyPair = if (keyFile.exists() && pubFile.exists()) {
-                    AdbKeyPair.read(keyFile, pubFile)
+                val keyPair: AdbKeyPair = if (keyFile.exists()) {
+                    // Lê a chave do arquivo se já existir
+                    AdbKeyPair.read(keyFile, keyFile)
                 } else {
+                    // Gera uma nova se não existir (aqui a gente não salva o pub, só a privada)
                     AdbKeyPair.generate().also {
-                        it.write(keyFile, pubFile)
+                        it.write(keyFile, keyFile)
                     }
                 }
 
                 dadb = Dadb.create(ip, port, keyPair)
                 onResult(true, "Conectado")
             } catch (e: Exception) {
-                onResult(false, e.message ?: "Erro")
+                onResult(false, e.message ?: "Erro desconhecido")
             }
         }
     }
