@@ -32,6 +32,4 @@ android {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.core:core-ktx:1.13.1")
-    
-    // Sem Dadb (removido para evitar erro de compilação)
 }
