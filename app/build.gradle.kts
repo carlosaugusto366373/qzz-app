@@ -33,6 +33,5 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.core:core-ktx:1.13.1")
     
-    // Dadb para ADB Wi-Fi
-    implementation("dev.mobile:dadb:1.2.9")
+    // Sem Dadb (removido para evitar erro de compilação)
 }
