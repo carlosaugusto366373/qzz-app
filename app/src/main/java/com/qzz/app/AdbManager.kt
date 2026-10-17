@@ -24,12 +24,13 @@ object AdbManager {
         }
     }
 
-    // Roda um comando shell como se fosse o ADB
+    // Roda o comando usando ProcessBuilder padrão
     fun executeCommand(command: String): String {
         return try {
-            if (!Shizuku.pingBinder()) return "Shizuku não está rodando"
+            val process = ProcessBuilder("sh", "-c", command)
+                .redirectErrorStream(true)
+                .start()
             
-            val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
             val output = process.inputStream.bufferedReader().readText()
             process.waitFor()
             output.ifEmpty { "OK" }
@@ -38,12 +39,10 @@ object AdbManager {
         }
     }
 
-    // Simula o toque (mira)
     fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, duration: Int = 100) {
         executeCommand("input swipe $x1 $y1 $x2 $y2 $duration")
     }
 
-    // Simula um clique
     fun tap(x: Int, y: Int) {
         executeCommand("input tap $x $y")
     }
