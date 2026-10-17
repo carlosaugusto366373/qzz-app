@@ -19,12 +19,14 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
-    // Listener para quando o usuário aperta "Permitir" no popup do Shizuku
+    // Listener do Shizuku
     private val permissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == 100) {
             val granted = grantResult == PackageManager.PERMISSION_GRANTED
             runOnUiThread {
-                webView.evaluateJavascript("window.adbResult($granted, 'Permissão: $granted')", null)
+                if (::webView.isInitialized) {
+                    webView.evaluateJavascript("window.adbResult($granted, 'Permissão: $granted')", null)
+                }
             }
         }
     }
@@ -33,11 +35,20 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Registra o listener do Shizuku
-        Shizuku.addRequestPermissionResultListener(permissionListener)
+        // 1. Tenta registrar o listener do Shizuku (SEM CRASHAR se o app Shizuku não estiver aberto)
+        try {
+            Shizuku.addRequestPermissionResultListener(permissionListener)
+        } catch (e: Exception) {
+            // Ignora
+        }
 
-        NativeAim.setTouchListener { x, y ->
-            AimAccessibilityService.instance?.moveTouch(x, y)
+        // 2. Tenta inicializar o NativeAim (SEM CRASHAR se a lib C++ não existir)
+        try {
+            NativeAim.setTouchListener { x, y ->
+                AimAccessibilityService.instance?.moveTouch(x, y)
+            }
+        } catch (e: Exception) {
+            // Ignora
         }
 
         webView = WebView(this).apply {
@@ -76,20 +87,26 @@ class MainActivity : AppCompatActivity() {
             addJavascriptInterface(object {
                 @JavascriptInterface
                 fun startAim() {
-                    val dm = resources.displayMetrics
-                    NativeAim.setScreen(dm.widthPixels, dm.heightPixels)
-                    NativeAim.setAim(true)
-                    NativeAim.init()
+                    try {
+                        val dm = resources.displayMetrics
+                        NativeAim.setScreen(dm.widthPixels, dm.heightPixels)
+                        NativeAim.setAim(true)
+                        NativeAim.init()
+                    } catch (e: Exception) { }
                 }
 
                 @JavascriptInterface
                 fun stopAim() {
-                    NativeAim.setAim(false)
+                    try {
+                        NativeAim.setAim(false)
+                    } catch (e: Exception) { }
                 }
 
                 @JavascriptInterface
                 fun setEsp(on: Boolean) {
-                    NativeAim.setEsp(on)
+                    try {
+                        NativeAim.setEsp(on)
+                    } catch (e: Exception) { }
                 }
             }, "QZZAim")
 
@@ -100,20 +117,26 @@ class MainActivity : AppCompatActivity() {
                 @JavascriptInterface
                 fun requestShizuku() {
                     runOnUiThread {
-                        AdbManager.checkPermission { granted ->
-                            if (granted) {
-                                webView.evaluateJavascript("window.adbResult(true, 'Shizuku conectado!')", null)
-                            } else {
-                                AdbManager.requestPermission()
-                                webView.evaluateJavascript("window.adbResult(false, 'Aguardando permissão...')", null)
+                        try {
+                            AdbManager.checkPermission { granted ->
+                                if (granted) {
+                                    webView.evaluateJavascript("window.adbResult(true, 'Shizuku conectado!')", null)
+                                } else {
+                                    AdbManager.requestPermission()
+                                    webView.evaluateJavascript("window.adbResult(false, 'Aguardando permissão...')", null)
+                                }
                             }
+                        } catch (e: Exception) {
+                            webView.evaluateJavascript("window.adbResult(false, 'Shizuku não está rodando. Abra o app Shizuku primeiro.')", null)
                         }
                     }
                 }
 
                 @JavascriptInterface
                 fun sendCommand(cmd: String) {
-                    AdbManager.executeCommand(cmd)
+                    try {
+                        AdbManager.executeCommand(cmd)
+                    } catch (e: Exception) { }
                 }
             }, "QZZAdb")
 
@@ -124,7 +147,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        Shizuku.removeRequestPermissionResultListener(permissionListener)
+        try {
+            Shizuku.removeRequestPermissionResultListener(permissionListener)
+        } catch (e: Exception) { }
         super.onDestroy()
     }
 
