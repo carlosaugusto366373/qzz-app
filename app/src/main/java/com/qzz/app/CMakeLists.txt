@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 3.22.1)
 project(qzzaim)
 
 # ============================================================
-# SHADOWHOOK
+# SHADOWHOOK (Injetor Nativo)
 # ============================================================
+# ATENÇÃO: O arquivo "libshadowhook.so" DEVE estar na pasta:
+# app/src/main/cpp/libs/arm64-v8a/libshadowhook.so
 add_library(shadowhook SHARED IMPORTED)
 set_target_properties(shadowhook PROPERTIES
     IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/${ANDROID_ABI}/libshadowhook.so
@@ -11,7 +13,7 @@ set_target_properties(shadowhook PROPERTIES
 )
 
 # ============================================================
-# PROJETO PRINCIPAL (O seu app)
+# PROJETO PRINCIPAL (QZZ)
 # ============================================================
 add_library(qzzaim SHARED
     aimbot.cpp
