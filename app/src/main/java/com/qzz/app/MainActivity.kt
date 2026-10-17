@@ -21,8 +21,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Inicializa o Dadb com o contexto
-        AdbManager.init(this)
+        // Tenta inicializar o AdbManager sem crashar
+        try {
+            AdbManager.init(this)
+        } catch (e: Exception) {
+            // Ignora
+        }
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -57,9 +61,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }, "AndroidAim")
 
-            // ============================================================
-            // PONTE ADB (Dadb)
-            // ============================================================
             addJavascriptInterface(object {
                 @JavascriptInterface
                 fun pairAdb(ip: String, port: String) {
@@ -82,7 +83,9 @@ class MainActivity : AppCompatActivity() {
 
                 @JavascriptInterface
                 fun sendCommand(cmd: String) {
-                    AdbManager.executeCommand(cmd)
+                    try {
+                        AdbManager.executeCommand(cmd)
+                    } catch (e: Exception) { }
                 }
             }, "QZZAdb")
 

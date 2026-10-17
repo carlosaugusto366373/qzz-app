@@ -34,5 +34,5 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     
     // Dadb para ADB Wi-Fi
-    implementation("dev.mobile:dadb:1.2.10")
+    implementation("dev.mobile:dadb:1.2.9")
 }
