@@ -19,7 +19,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
-    // Listener do Shizuku
     private val permissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == 100) {
             val granted = grantResult == PackageManager.PERMISSION_GRANTED
@@ -35,21 +34,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Tenta registrar o listener do Shizuku (SEM CRASHAR se o app Shizuku não estiver aberto)
         try {
             Shizuku.addRequestPermissionResultListener(permissionListener)
-        } catch (e: Exception) {
-            // Ignora
-        }
-
-        // 2. Tenta inicializar o NativeAim (SEM CRASHAR se a lib C++ não existir)
-        try {
-            NativeAim.setTouchListener { x, y ->
-                AimAccessibilityService.instance?.moveTouch(x, y)
-            }
-        } catch (e: Exception) {
-            // Ignora
-        }
+        } catch (e: Exception) { }
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -84,35 +71,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }, "AndroidAim")
 
-            addJavascriptInterface(object {
-                @JavascriptInterface
-                fun startAim() {
-                    try {
-                        val dm = resources.displayMetrics
-                        NativeAim.setScreen(dm.widthPixels, dm.heightPixels)
-                        NativeAim.setAim(true)
-                        NativeAim.init()
-                    } catch (e: Exception) { }
-                }
-
-                @JavascriptInterface
-                fun stopAim() {
-                    try {
-                        NativeAim.setAim(false)
-                    } catch (e: Exception) { }
-                }
-
-                @JavascriptInterface
-                fun setEsp(on: Boolean) {
-                    try {
-                        NativeAim.setEsp(on)
-                    } catch (e: Exception) { }
-                }
-            }, "QZZAim")
-
-            // ============================================================
-            // PONTE SHIZUKU (ADB sem root)
-            // ============================================================
+            // Ponte SHIZUKU (ADB sem root)
             addJavascriptInterface(object {
                 @JavascriptInterface
                 fun requestShizuku() {
