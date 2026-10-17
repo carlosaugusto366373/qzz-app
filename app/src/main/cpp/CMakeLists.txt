@@ -4,7 +4,10 @@ project(qzzaim)
 add_library(qzzaim SHARED
     aimbot.cpp
     memory.cpp
+    injector.cpp
 )
 
 target_compile_options(qzzaim PRIVATE -O2 -fvisibility=hidden -std=c++17)
-target_link_libraries(qzzaim log android)
+
+find_library(shadowhook-lib shadowhook)
+target_link_libraries(qzzaim ${shadowhook-lib} log android)

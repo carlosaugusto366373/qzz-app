@@ -6,7 +6,10 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
-import android.view.*
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -14,11 +17,12 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageView
+import kotlin.math.abs
 
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
-    private lateinit var floatingView: View
+    private lateinit var floatingView: FrameLayout
     private lateinit var webView: WebView
     private lateinit var minimizedButton: ImageView
 
@@ -42,30 +46,40 @@ class OverlayService : Service() {
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        // ============================================================
-        // BOTÃO MINIMIZADO (bolinha)
-        // ============================================================
         minimizedButton = ImageView(this).apply {
             setImageResource(android.R.drawable.ic_menu_compass)
             setBackgroundColor(0xCC000000.toInt())
-            setPadding(20, 20, 20, 20)
+            setPadding(30, 30, 30, 30)
             setOnClickListener { expand() }
         }
 
-        // ============================================================
-        // JANELA FLUTUANTE COM WEBVIEW
-        // ============================================================
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = true
             settings.allowContentAccess = true
+
+            settings.cacheMode = WebSettings.LOAD_NO_CACHE
+            @Suppress("DEPRECATION")
+            settings.setRenderPriority(WebSettings.RenderPriority.HIGH)
+            settings.setSupportZoom(false)
+            settings.builtInZoomControls = false
+            settings.displayZoomControls = false
+            
+            settings.loadsImagesAutomatically = true
+            settings.blockNetworkImage = true
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            
+            setBackgroundColor(0xEE000000.toInt())
+
             webViewClient = WebViewClient()
             webChromeClient = WebChromeClient()
 
             addJavascriptInterface(object {
                 @JavascriptInterface
-                fun minimize() { minimize() }
+                fun minimize() {
+                    this@OverlayService.minimize()
+                }
                 @JavascriptInterface
                 fun close() { stopSelf() }
                 @JavascriptInterface
@@ -85,10 +99,13 @@ class OverlayService : Service() {
                 }
             }, "QZZOverlay")
 
-            loadUrl("file:///android_asset/index.html")
+            loadUrl("file:///android_asset/index.html?overlay=1")
         }
 
-        val webContainer = FrameLayout(this).apply {
+        val scale = 0.7f
+        webView.setInitialScale((scale * 100).toInt())
+
+        floatingView = FrameLayout(this).apply {
             setBackgroundColor(0xEE000000.toInt())
             addView(webView, FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -96,9 +113,6 @@ class OverlayService : Service() {
             ))
         }
 
-        // ============================================================
-        // LAYOUT DA JANELA
-        // ============================================================
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else
@@ -106,28 +120,23 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
 
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            (resources.displayMetrics.widthPixels * 0.9f).toInt(),
+            (resources.displayMetrics.heightPixels * 0.6f).toInt(),
             layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = 50
             y = 200
-            width = (resources.displayMetrics.widthPixels * 0.9f).toInt()
-            height = (resources.displayMetrics.heightPixels * 0.7f).toInt()
         }
 
-        // ============================================================
-        // JANELA MINIMIZADA (params separados)
-        // ============================================================
         val minParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -135,19 +144,52 @@ class OverlayService : Service() {
             y = 200
         }
 
-        floatingView = webContainer
         floatingView.tag = params
         minimizedButton.tag = minParams
 
-        // barra de arrastar (topo)
-        val dragBar = View(this).apply {
-            setBackgroundColor(0xFFff0044.toInt())
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, 40
-            )
-            setOnTouchListener(DragListener(params))
-        }
-        (floatingView as FrameLayout).addView(dragBar)
+        // ============================================================
+        // DRAG LISTENER (Arrastar pela barra do topo)
+        // ============================================================
+        // O cálculo de y < 150 (pixels) garante que só ativa o arrasto se
+        // o dedo do usuário estiver tocando a barra vermelha no topo do HTML.
+        webView.setOnTouchListener(object : View.OnTouchListener {
+            private var initialX = 0
+            private var initialY = 0
+            private var initialTouchX = 0f
+            private var initialTouchY = 0f
+            private var isDragging = false
+
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        // Checa se o toque foi na área da barra do topo
+                        if (event.y < 150) {
+                            initialX = params.x
+                            initialY = params.y
+                            initialTouchX = event.rawX
+                            initialTouchY = event.rawY
+                            isDragging = true
+                            return true // Consome o evento
+                        }
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (isDragging) {
+                            params.x = initialX + (event.rawX - initialTouchX).toInt()
+                            params.y = initialY + (event.rawY - initialTouchY).toInt()
+                            windowManager.updateViewLayout(floatingView, params)
+                            return true
+                        }
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        if (isDragging) {
+                            isDragging = false
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+        })
 
         windowManager.addView(floatingView, params)
     }
@@ -175,33 +217,5 @@ class OverlayService : Service() {
         }
         instance = null
         super.onDestroy()
-    }
-
-    // listener de drag
-    private inner class DragListener(private val params: WindowManager.LayoutParams) :
-        View.OnTouchListener {
-        private var initialX = 0
-        private var initialY = 0
-        private var touchX = 0f
-        private var touchY = 0f
-
-        override fun onTouch(v: View, event: MotionEvent): Boolean {
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x
-                    initialY = params.y
-                    touchX = event.rawX
-                    touchY = event.rawY
-                    return true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - touchX).toInt()
-                    params.y = initialY + (event.rawY - touchY).toInt()
-                    windowManager.updateViewLayout(floatingView, params)
-                    return true
-                }
-            }
-            return false
-        }
     }
 }

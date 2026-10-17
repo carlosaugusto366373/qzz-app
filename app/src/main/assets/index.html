@@ -511,7 +511,7 @@
 
     <div id="overlayBar" style="
         position:fixed; top:0; left:0; right:0; height:50px;
-        background:#ff0044; display:flex; align-items:center;
+        background:#ff0044; display:none; align-items:center;
         justify-content:space-between; padding:0 15px;
         z-index:999999;">
         <button onclick="if(window.QZZOverlay)QZZOverlay.minimize()" style="
@@ -665,7 +665,27 @@
             </div>
 
             <button class="activate" id="injetarBtn">INJETAR FUNÇÕES</button>
+            
+            <!-- BOTÃO CONECTAR ADB -->
+            <button class="activate" id="adbBtn" style="margin-top: 10px; background: linear-gradient(135deg, #0088ff, #0055cc); display: none;">CONECTAR ADB</button>
+            
             <div class="info">Android • iOS • Overlay</div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONEXÃO ADB -->
+    <div id="adbModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 999999;">
+        <div style="background: #1a0808; padding: 20px; border-radius: 16px; border: 1px solid #ff0044; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 10px;">
+            <h2 style="color: #ff0044; text-align: center; margin-bottom: 10px;">Conexão ADB Wi-Fi</h2>
+            <p style="color: #b08080; font-size: 12px; text-align: center; margin-bottom: 10px;">Vá nas configurações do Android > Opções do Desenvolvedor > Depuração sem fio. Use os dados do pareamento.</p>
+            
+            <input type="text" id="adbIp" placeholder="IP (ex: 192.168.1.15)" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
+            <input type="text" id="adbPairPort" placeholder="Porta de Pareamento" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
+            <input type="text" id="adbCode" placeholder="Código de 6 dígitos" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
+            <input type="text" id="adbConnectPort" placeholder="Porta de Conexão (ex: 5555)" style="padding: 10px; border-radius: 8px; border: 1px solid #3a2a2a; background: #0a0505; color: #fff;">
+            
+            <button onclick="connectAdb()" style="padding: 12px; border-radius: 8px; border: none; background: #ff0044; color: #000; font-weight: bold; margin-top: 10px; cursor: pointer;">CONECTAR</button>
+            <button onclick="closeAdbModal()" style="padding: 12px; border-radius: 8px; border: none; background: transparent; color: #b08080; cursor: pointer;">CANCELAR</button>
         </div>
     </div>
 
@@ -675,7 +695,18 @@
 
     <script>
         // ============================================================
-        // ===== CONFIGURAÇÃO DO BACKEND =====
+        // DETECÇÃO DE OVERLAY
+        // ============================================================
+        const isOverlay = location.search.includes('overlay=1');
+        if (isOverlay) {
+            document.getElementById('overlayBar').style.display = 'flex';
+            const s = document.createElement('style');
+            s.textContent = `* { animation: none !important; transition: none !important; }`;
+            document.head.appendChild(s);
+        }
+
+        // ============================================================
+        // CONFIGURAÇÃO DO BACKEND
         // ============================================================
         const API_BASE = 'https://qzz-backend.onrender.com';
 
@@ -838,6 +869,9 @@
             document.getElementById('mainApp').style.display = 'flex';
             updateExpirationInfo();
             startSessionWatcher();
+            
+            // Mostra o botão ADB se estiver no app
+            document.getElementById('adbBtn').style.display = 'block';
         }
 
         function updateExpirationInfo() {
@@ -929,7 +963,6 @@
             const isActive = card.classList.contains('active');
             showToast(isActive ? nome + ' ativado' : nome + ' desativado');
 
-            // se for o Aim Assist, chama o nativo
             if (nome.toLowerCase().includes('aim')) {
                 if (typeof QZZAim !== 'undefined') {
                     if (isActive) QZZAim.startAim();
@@ -945,6 +978,48 @@
             el.classList.add('active');
         }
 
+        // ============================================================
+        // LÓGICA DO ADB
+        // ============================================================
+        function openAdbModal() {
+            document.getElementById('adbModal').style.display = 'flex';
+        }
+        function closeAdbModal() {
+            document.getElementById('adbModal').style.display = 'none';
+        }
+        function connectAdb() {
+            const ip = document.getElementById('adbIp').value;
+            const pairPort = document.getElementById('adbPairPort').value;
+            const code = document.getElementById('adbCode').value;
+            const connectPort = document.getElementById('adbConnectPort').value;
+
+            if (!ip || !pairPort || !code || !connectPort) {
+                showToast('Preencha todos os campos', 'error');
+                return;
+            }
+
+            showToast('Conectando...', '');
+            if (typeof QZZAdb !== 'undefined') {
+                QZZAdb.pairAdb(ip, pairPort, code, connectPort);
+            } else {
+                showToast('ADB não suportado nesse dispositivo', 'error');
+            }
+        }
+
+        window.adbResult = function(success, msg) {
+            if (success) {
+                showToast('✅ ADB Conectado!', '');
+                closeAdbModal();
+            } else {
+                showToast('❌ Falha ADB: ' + msg, 'error');
+            }
+        };
+
+        document.getElementById('adbBtn').addEventListener('click', openAdbModal);
+
+        // ============================================================
+        // INJETAR E ZIP (O restante do código de ZIP e INJETAR segue igual)
+        // ============================================================
         const zipInput = document.getElementById('zipInput');
         const zipName = document.getElementById('zipName');
         const zipStatus = document.getElementById('zipStatus');
@@ -954,13 +1029,11 @@
         let selectedFile = null;
 
         document.getElementById('zipTrigger').addEventListener('click', () => zipInput.click());
-
         zipArea.addEventListener('click', (e) => {
             if (e.target === zipArea || e.target.closest('.zip-label') || e.target.closest('.zip-icon')) {
                 zipInput.click();
             }
         });
-
         zipArea.addEventListener('dragover', (e) => { e.preventDefault(); zipArea.classList.add('dragover'); });
         zipArea.addEventListener('dragleave', () => zipArea.classList.remove('dragover'));
         zipArea.addEventListener('drop', (e) => {
@@ -968,7 +1041,6 @@
             zipArea.classList.remove('dragover');
             if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]);
         });
-
         zipInput.addEventListener('change', function() {
             if (this.files.length > 0) processFile(this.files[0]);
         });
@@ -1010,9 +1082,6 @@
             }, 2500);
         });
 
-        // ============================================================
-        // ===== BOTÃO INJETAR FUNÇÕES — ABRE OVERLAY =====
-        // ============================================================
         document.getElementById('injetarBtn').addEventListener('click', function() {
             if (typeof AndroidAim !== 'undefined' && AndroidAim.openOverlay) {
                 AndroidAim.openOverlay();

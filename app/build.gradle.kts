@@ -39,12 +39,10 @@ android {
             isMinifyEnabled = false
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -53,4 +51,10 @@ android {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.core:core-ktx:1.13.1")
+    
+    // Biblioteca para comunicação ADB Wi-Fi (Pareamento e Shell)
+    implementation("dev.mobile:dadb:1.2.10")
+    
+    // ShadowHook (para o injetor nativo)
+    implementation("com.bytedance.android:shadowhook:1.1.1")
 }

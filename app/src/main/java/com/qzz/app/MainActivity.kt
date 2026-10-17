@@ -21,6 +21,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Inicializa o ADB com o contexto do app
+        AdbManager.init(this)
+
         NativeAim.setTouchListener { x, y ->
             AimAccessibilityService.instance?.moveTouch(x, y)
         }
@@ -77,6 +80,40 @@ class MainActivity : AppCompatActivity() {
                     NativeAim.setEsp(on)
                 }
             }, "QZZAim")
+
+            // ============================================================
+            // PONTE ADB WI-FI
+            // ============================================================
+            addJavascriptInterface(object {
+                @JavascriptInterface
+                fun pairAdb(ip: String, pairPort: String, code: String, connectPort: String) {
+                    try {
+                        AdbManager.pairAndConnect(
+                            ip = ip,
+                            pairPort = pairPort.toInt(),
+                            pairCode = code,
+                            connectPort = connectPort.toInt()
+                        ) { ok, msg ->
+                            runOnUiThread {
+                                webView.evaluateJavascript(
+                                    "window.adbResult($ok, '$msg')", null
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread {
+                            webView.evaluateJavascript(
+                                "window.adbResult(false, 'Erro: ${e.message}')", null
+                            )
+                        }
+                    }
+                }
+
+                @JavascriptInterface
+                fun sendCommand(cmd: String) {
+                    AdbManager.executeCommand(cmd)
+                }
+            }, "QZZAdb")
 
             loadUrl("file:///android_asset/index.html")
         }
