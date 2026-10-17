@@ -7,6 +7,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
+import java.security.KeyPairGenerator
+import java.security.interfaces.RSAPrivateKey
+import java.security.interfaces.RSAPublicKey
+import java.util.Base64
 
 object AdbManager {
     private var dadb: Dadb? = null
@@ -29,18 +33,35 @@ object AdbManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val keyFile = File(ctx.filesDir, "adbkey")
-                
-                val keyPair: AdbKeyPair = if (keyFile.exists()) {
-                    // Lê a chave do arquivo se já existir
-                    AdbKeyPair.read(keyFile, keyFile)
-                } else {
-                    // Gera uma nova se não existir (aqui a gente não salva o pub, só a privada)
-                    AdbKeyPair.generate().also {
-                        it.write(keyFile, keyFile)
-                    }
+                val pubFile = File(ctx.filesDir, "adbkey.pub")
+
+                // Se não existir a chave, gera manualmente
+                if (!keyFile.exists() || !pubFile.exists()) {
+                    val keyGen = KeyPairGenerator.getInstance("RSA")
+                    keyGen.initialize(2048)
+                    val kp = keyGen.generateKeyPair()
+
+                    val privateKey = kp.private as RSAPrivateKey
+                    val publicKey = kp.public as RSAPublicKey
+
+                    // Formata a privada no padrão PEM do ADB
+                    val privPem = "-----BEGIN RSA PRIVATE KEY-----\n" +
+                            Base64.getEncoder().encodeToString(privateKey.encoded) +
+                            "\n-----END RSA PRIVATE KEY-----"
+                    
+                    // Formata a pública no padrão do ADB (base64 da chave crua)
+                    val pubBase64 = Base64.getEncoder().encodeToString(publicKey.encoded)
+
+                    keyFile.writeText(privPem)
+                    pubFile.writeText(pubBase64)
                 }
 
+                // Agora tenta ler com o Dadb (se ele suportar)
+                // Se não suportar, a gente vai usar o Dadb direto com a chave no formato dele.
+                // Como a API do Dadb tá bugada, vamos tentar o AdbKeyPair.read
+                val keyPair = AdbKeyPair.read(keyFile, pubFile)
                 dadb = Dadb.create(ip, port, keyPair)
+                
                 onResult(true, "Conectado")
             } catch (e: Exception) {
                 onResult(false, e.message ?: "Erro desconhecido")
