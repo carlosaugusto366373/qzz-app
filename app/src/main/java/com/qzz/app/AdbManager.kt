@@ -1,69 +1,50 @@
 package com.qzz.app
 
-import android.content.Context
-import dadb.AdbKeyPair
-import dadb.Dadb
-import dadb.PairingConnection
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.io.File
+import android.content.pm.PackageManager
+import rikka.shizuku.Shizuku
 
 object AdbManager {
-    private var dadb: Dadb? = null
-    private var appContext: Context? = null
+    private const val PERMISSION_REQUEST_CODE = 100
 
-    fun init(context: Context) {
-        appContext = context.applicationContext
-    }
-
-    fun pairAndConnect(
-        ip: String,
-        pairPort: Int,
-        pairCode: String,
-        connectPort: Int,
-        onResult: (Boolean, String) -> Unit
-    ) {
-        val ctx = appContext ?: run {
-            onResult(false, "Contexto não inicializado")
+    fun checkPermission(onResult: (Boolean) -> Unit) {
+        if (!Shizuku.pingBinder()) {
+            onResult(false)
             return
         }
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // A API do Dadb 1.2.10 exige o keyPair gerado
-                val keyPair: AdbKeyPair = AdbKeyPair.generate()
-                
-                // 1. Faz o pareamento (PairingConnection)
-                val pairing = PairingConnection(keyPair, ip, pairPort)
-                pairing.pair(pairCode)
-
-                // 2. Conecta via ADB normal
-                dadb = Dadb.create(ip, connectPort, keyPair)
-
-                onResult(true, "Conectado")
-            } catch (e: Exception) {
-                onResult(false, e.message ?: "Erro desconhecido")
-            }
+        if (Shizuku.isPreV11() || Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            onResult(true)
+        } else {
+            onResult(false)
         }
     }
 
+    fun requestPermission() {
+        if (!Shizuku.isPreV11() && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    // Roda um comando shell como se fosse o ADB
     fun executeCommand(command: String): String {
         return try {
-            dadb?.shell(command)?.output ?: "Desconectado"
+            if (!Shizuku.pingBinder()) return "Shizuku não está rodando"
+            
+            val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
+            val output = process.inputStream.bufferedReader().readText()
+            process.waitFor()
+            output.ifEmpty { "OK" }
         } catch (e: Exception) {
             "Erro: ${e.message}"
         }
     }
 
+    // Simula o toque (mira)
     fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, duration: Int = 100) {
         executeCommand("input swipe $x1 $y1 $x2 $y2 $duration")
     }
 
-    fun isConnected(): Boolean = dadb?.connected ?: false
-
-    fun disconnect() {
-        dadb?.close()
-        dadb = null
+    // Simula um clique
+    fun tap(x: Int, y: Int) {
+        executeCommand("input tap $x $y")
     }
 }

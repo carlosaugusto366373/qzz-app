@@ -52,8 +52,9 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.core:core-ktx:1.13.1")
     
-    // Biblioteca para comunicação ADB Wi-Fi (Pareamento e Shell)
-    implementation("dev.mobile:dadb:1.2.10")
+    // Shizuku (ADB via permissão de usuário)
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
     
     // ShadowHook (para o injetor nativo)
     implementation("com.bytedance.android:shadowhook:1.1.1")
