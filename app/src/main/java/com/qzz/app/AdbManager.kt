@@ -30,14 +30,20 @@ object AdbManager {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val keyFile = File(ctx.filesDir, "adbkey")
-                val keyPair = if (keyFile.exists()) {
-                    AdbKeyPair.read(keyFile)
+                // Caminhos para as chaves
+                val privKeyFile = File(ctx.filesDir, "adbkey")
+                val pubKeyFile = File(ctx.filesDir, "adbkey.pub")
+
+                val keyPair = if (privKeyFile.exists() && pubKeyFile.exists()) {
+                    AdbKeyPair.read(privKeyFile, pubKeyFile)
                 } else {
-                    AdbKeyPair.generate().also { it.write(keyFile) }
+                    AdbKeyPair.generate().also { 
+                        it.write(privKeyFile, pubKeyFile) 
+                    }
                 }
 
-                // 1. Pareamento
+                // 1. Pareamento (API pode ser pair(host, port, code, keyPair) ou pair(host, port, keyPair, code))
+                // Vou usar a assinatura padrão do Dadb mais comum:
                 Dadb.pair(
                     host = ip,
                     port = pairPort,
@@ -54,7 +60,7 @@ object AdbManager {
 
                 onResult(true, "Conectado")
             } catch (e: Exception) {
-                onResult(false, e.message ?: "Erro")
+                onResult(false, e.message ?: "Erro desconhecido")
             }
         }
     }
@@ -71,7 +77,7 @@ object AdbManager {
         executeCommand("input swipe $x1 $y1 $x2 $y2 $duration")
     }
 
-    fun isConnected(): Boolean = dadb?.isOpen == true
+    fun isConnected(): Boolean = dadb?.isOpen ?: false
 
     fun disconnect() {
         dadb?.close()
